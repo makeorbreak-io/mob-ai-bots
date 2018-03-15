@@ -1,0 +1,61 @@
+"use strict";
+
+const multipaint = require("multipaint");
+
+const choice = (array) => array[Math.floor(Math.random() * array.length)];
+
+const calculateCellValue = (name, player_id) => {
+  let value = 0;
+  switch(name){
+    case player_id:
+      value = 0;
+      break;
+    case null:
+      value = 1;
+      break;
+    default:
+      value=2;
+      break;
+  }
+  return value;
+}
+
+const chooseAction = (board, [pcolumn, prow], height, width) => {
+  let maxPoints=0;
+  let chosenDirection=[0,0];
+  let chosenAction='walk';
+
+  const arrayDirections = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+  arrayDirections.forEach( dir => {
+    const column =  pcolumn + dir[0];
+    const row =  prow + dir[1];
+    if(column >= 0 && column < height && row >= 0 && row < width){
+    
+      const points = board[column][row];
+      if(points > maxPoints) {
+        maxPoints = points;
+        chosenDirection = dir;
+      }
+
+    }
+  });
+ return [chosenAction, chosenDirection]; 
+}
+
+class Megabot2000 {
+  constructor(player_id) {
+    this.player_id = player_id;
+  }
+
+  next_move(state) {
+    const board = state.colors.map(line => line.map( cell => calculateCellValue(cell, this.player_id)));
+    console.error("board",board);
+    const [type, direction] = chooseAction(board, state.player_positions[this.player_id],state.height,state.width);
+    return {
+      type,
+      direction,
+    };
+  }
+}
+
+multipaint.run(Megabot2000);
