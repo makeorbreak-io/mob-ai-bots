@@ -19,24 +19,44 @@ const calculateCellWalkValue = (name, player_id) => {
   }
   return value;
 }
-const calculateCellShootValue = (row, column, colors, player_id, player_pos, height, width) => {
+const calculateCellShootValue = (row, column, colors, player_id, dir, height, width) => {
   let value = 0;
   let sameColorBehind = 0;
   let inc=0;
-  while(true){
+  let loop=true;
+  while(loop){
     inc++;
-    const nextRow = player_pos[0] + inc*row; 
-    const nextCol = player_pos[1] + inc*column; 
+    const nextRow = row - 1*dir[0] - inc*dir[0]; 
+    const nextCol = column - 1*dir[1] - inc*dir[1]; 
     if(nextRow <0 || nextRow >= width || nextCol < 0 || nextCol >= height){
-      break;
-    }
-    if(colors[nextRow][nextCol] != player_id){
-      value++;
-    }else{
-      break;
+      loop=false;
+    }else {
+      if(colors[nextRow][nextCol] == player_id){
+        value++;
+      }else{
+        loop=false;
+      }
+
     }
   }
-  
+  inc=-1;
+  let sameColorFront= 0;
+  loop=true;
+  while(loop){
+    inc++;
+    const nextRow = row + inc*dir[0]; 
+    const nextCol = column + inc*dir[1]; 
+    if(nextRow <0 || nextRow >= width || nextCol < 0 || nextCol >= height){
+      loop=false;
+    }else {
+      if(colors[nextRow][nextCol] == player_id){
+        value--;
+      }else{
+        loop=false;
+      }
+
+    }
+  }
 
   
 
@@ -78,7 +98,7 @@ class Megabot2000 {
   }
 
   next_move(state) {
-    let board = state.colors.map((line,row) => line.map( (cell, column) => ({walk: calculateCellWalkValue(cell, this.player_id), shoot: calculateCellShootValue(row, column, state.colors, this.player_id, state.player_positions[this.player_id], state.height,state.width) })));
+    let board = state.colors.map((line,row) => line.map( (cell, column) => ({walk: calculateCellWalkValue(cell, this.player_id), shoot: calculateCellShootValue(row, column, state.colors, this.player_id, [-1,-1], state.height,state.width) })));
     const otherPlayers = Object.keys(state.player_positions).map( key => key != this.player_id ? state.player_positions[key] : null).filter( o=> o );
     otherPlayers.forEach(o => board[o[0]][o[1]] = -1);
     console.error("other_players",otherPlayers);
