@@ -4,11 +4,30 @@ const multipaint = require("multipaint");
 
 const choice = (array) => array[Math.floor(Math.random() * array.length)];
 
-const calculateCellWalkValue = (name, player_id) => {
+
+const calculateValueBasedOnNearby = (player_id, state, [row,column]) => {
+  
+  
+  let value =0;
+  const arrayDirections = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+  arrayDirections.forEach( dir => {
+    const nextRow = row+dir[0];
+    const nextCol = column + dir[1];
+    if(nextRow <0 || nextRow >= state.width || nextCol < 0 || nextCol >= state.height){ 
+    }else if(state.colors[nextRow][nextCol] != player_id ){
+      value += 1;
+    }
+  });
+  return value != 0 ? value /10 : 0;
+};
+
+
+
+const calculateCellWalkValue = (name, player_id, state, pos) => {
   let value = 0;
   switch(name){
     case player_id:
-      value = 0;
+      value = calculateValueBasedOnNearby(player_id, state, pos);
       break;
     case null:
       value = 1;
@@ -125,7 +144,7 @@ const chooseAction = (board, [pcolumn, prow], height, width,player_id,colors,pla
     const row =  prow + dir[1];
     if(column >= 0 && column < height && row >= 0 && row < width){
     
-      const walkPoints = board[column][row].walk;
+      const walkPoints = board[column][row];
       if(walkPoints > maxPoints) {
         maxPoints = walkPoints;
         chosenDirection = dir;
@@ -150,10 +169,11 @@ class Megabot2000 {
   }
 
   next_move(state) {
-    let board = state.colors.map((line,row) => line.map( (cell, column) => ({walk: calculateCellWalkValue(cell, this.player_id), shoot: 0 })));
+    let board = state.colors.map((line,row) => line.map( (cell, column) => (calculateCellWalkValue(cell, this.player_id,state,[row,column]))));
     const otherPlayers = Object.keys(state.player_positions).map( key => key != this.player_id ? state.player_positions[key] : null).filter( o=> o );
     otherPlayers.forEach(o => board[o[0]][o[1]] = -1);
     console.error("shoot",calculateShootValue(state.colors,state.player_positions[this.player_id],state.height,state.width));
+    console.error(board);
     const [type, direction] = chooseAction(board, state.player_positions[this.player_id],state.height,state.width,this.player_id,state.colors,state.player_positions);
     return {
       type,
