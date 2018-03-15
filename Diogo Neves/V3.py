@@ -21,6 +21,7 @@ class MegaBot4000(object):
         else:
             move_type = "shot"
 
+        move_number += 1
         return {
             "type": move_type,
             "direction": direction,
