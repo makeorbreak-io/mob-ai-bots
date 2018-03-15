@@ -80,12 +80,6 @@ const chooseAction = (board, [pcolumn, prow], height, width) => {
         chosenDirection = dir;
         chosenAction = 'walk';
       }
-      const shootPoints = board[column][row].shoot;
-      if(shootPoints > maxPoints) {
-        maxPoints = shootPoints;
-        chosenDirection = dir;
-        chosenAction = 'shoot';
-      }
 
     }
   });
