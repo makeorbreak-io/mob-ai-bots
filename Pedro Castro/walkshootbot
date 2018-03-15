@@ -4,7 +4,7 @@ const multipaint = require("multipaint");
 
 const choice = (array) => array[Math.floor(Math.random() * array.length)];
 
-const calculateCellValue = (name, player_id) => {
+const calculateCellWalkValue = (name, player_id) => {
   let value = 0;
   switch(name){
     case player_id:
@@ -19,6 +19,29 @@ const calculateCellValue = (name, player_id) => {
   }
   return value;
 }
+const calculateCellShootValue = (row, column, colors, player_id, player_pos, height, width) => {
+  let value = 0;
+  let sameColorBehind = 0;
+  let inc=0;
+  while(true){
+    inc++;
+    const nextRow = player_pos[0] + inc*row; 
+    const nextCol = player_pos[1] + inc*column; 
+    if(nextRow <0 || nextRow >= width || nextCol < 0 || nextCol >= height){
+      break;
+    }
+    if(colors[nextRow][nextCol] != player_id){
+      value++;
+    }else{
+      break;
+    }
+  }
+  
+
+  
+
+  return value;
+}
 
 const chooseAction = (board, [pcolumn, prow], height, width) => {
   let maxPoints=0;
@@ -31,10 +54,17 @@ const chooseAction = (board, [pcolumn, prow], height, width) => {
     const row =  prow + dir[1];
     if(column >= 0 && column < height && row >= 0 && row < width){
     
-      const points = board[column][row];
-      if(points > maxPoints) {
-        maxPoints = points;
+      const walkPoints = board[column][row].walk;
+      if(walkPoints > maxPoints) {
+        maxPoints = walkPoints;
         chosenDirection = dir;
+        chosenAction = 'walk';
+      }
+      const shootPoints = board[column][row].shoot;
+      if(shootPoints > maxPoints) {
+        maxPoints = shootPoints;
+        chosenDirection = dir;
+        chosenAction = 'shoot';
       }
 
     }
@@ -48,9 +78,11 @@ class Megabot2000 {
   }
 
   next_move(state) {
-    let board = state.colors.map(line => line.map( cell => calculateCellValue(cell, this.player_id)));
+    let board = state.colors.map((line,row) => line.map( (cell, column) => ({walk: calculateCellWalkValue(cell, this.player_id), shoot: calculateCellShootValue(row, column, state.colors, this.player_id, state.player_positions[this.player_id], state.height,state.width) })));
     const otherPlayers = Object.keys(state.player_positions).map( key => key != this.player_id ? state.player_positions[key] : null).filter( o=> o );
     otherPlayers.forEach(o => board[o[0]][o[1]] = -1);
+    console.error("other_players",otherPlayers);
+    console.error("board",board);
     const [type, direction] = chooseAction(board, state.player_positions[this.player_id],state.height,state.width);
     return {
       type,
