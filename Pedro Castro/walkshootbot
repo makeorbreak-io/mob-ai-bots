@@ -18,7 +18,7 @@ const twoLayerDirections = [-2,-1,0,1,2].reduce( (acc,v) => {
 
   acc = [...acc, ...[-2,-1,0,1,2].map(v2 => [v,v2])];
   return acc;
-},[]);
+},[]).filter( o => o != [0,0] );
 
 
 const calculateValueBasedOnNearby = (player_id, state, [row,column]) => {
@@ -31,10 +31,10 @@ const calculateValueBasedOnNearby = (player_id, state, [row,column]) => {
     const nextCol = column + dir[1];
     if(nextRow <0 || nextRow >= state.width || nextCol < 0 || nextCol >= state.height){ 
     }else if(state.colors[nextRow][nextCol] != player_id ){
-      value += 1;
+      value += Math.abs(dir[0]) > 1 || Math.abs(dir[1]>1) ? 1 : 2;
     }
   });
-  return value != 0 ? value /10 : 0;
+  return value != 0 ? value /100 : 0;
 };
 
 
@@ -132,7 +132,7 @@ const calculateShootValue = (colors, [prow, pcolumn],height, width,player_id ) =
         break;
       }else {
         if(colors[nextRow][nextCol] != player_id){
-          dem++;
+          dem+= colors[nextRow][nextCol] ? 2 : 1;
         }else{
           break;
         }
