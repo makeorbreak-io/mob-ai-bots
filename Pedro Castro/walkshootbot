@@ -147,7 +147,7 @@ const chooseAction = (board, [pcolumn, prow], height, width,player_id,colors,pla
   let chosenDirection=[0,0];
   let chosenAction='walk';
 
-  const arrayDirections = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+  const arrayDirections = getDirections();
   arrayDirections.forEach( dir => {
     const column =  pcolumn + dir[0];
     const row =  prow + dir[1];
