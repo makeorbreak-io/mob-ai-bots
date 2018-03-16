@@ -14,11 +14,18 @@ const getDirections = () => {
   return a;
 }
 
+const twoLayerDirections = [-2,-1,0,1,2].reduce( (acc,v) => {
+
+  acc = [...acc, ...[-2,-1,0,1,2].map(v2 => [v,v2])];
+  return acc;
+},[]);
+
+
 const calculateValueBasedOnNearby = (player_id, state, [row,column]) => {
   
   
   let value =0;
-  const arrayDirections = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+  const arrayDirections = twoLayerDirections;
   arrayDirections.forEach( dir => {
     const nextRow = row+dir[0];
     const nextCol = column + dir[1];
