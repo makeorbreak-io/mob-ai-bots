@@ -164,7 +164,7 @@ const chooseAction = (board, [pcolumn, prow], height, width,player_id,colors,pla
     }
   });
   const [shootPoints,dir] = calculateShootValue(colors,player_positions[player_id],height,width);
-  if(shootPoints > maxPoints) {
+  if(shootPoints >= maxPoints) {
     maxPoints = shootPoints;
     chosenDirection = dir;
     chosenAction = 'shoot';
