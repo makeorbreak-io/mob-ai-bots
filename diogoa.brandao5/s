@@ -18,19 +18,19 @@ class MegaBot4000(object):
                     "type": "walk",
                     "direction": [1, 1],
                     }
-        else:
-            if n==0:
-                n=1
-                return{
-                    "type": "shoot",
-                    "direction": [1, 0],
-                    }
             else:
-                n=0
-                return{
-                    "type": "walk",
-                    "direction": [0,1],
-                    }
+                if n==0:
+                    n=1
+                    return{
+                        "type": "shoot",
+                        "direction": [1, 0],
+                        }
+                    else:
+                        n=0
+                        return{
+                        "type": "walk",
+                        "direction": [0,1],
+                        }
 
 if __name__ == "__main__":
     multipaint.run(MegaBot4000)
