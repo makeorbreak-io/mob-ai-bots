@@ -13,7 +13,6 @@ class MegaBot4000(object):
         return {
             "type": random.choice(["walk", "shoot"]),
             "direction": random.choice([[1, 0], [-1, 0], [0, 1], [0, -1]]),
-            
         }
 
 
