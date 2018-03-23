@@ -10,12 +10,19 @@ class MegaBot4000(object):
         self.player_id = player_id
 
     def next_move(self, state):
-        
+        if (n=0):
+            n=1
                 return {
                     "type": "walk",
                     "direction": [1, 0],
+                    
                     }
-        
+        else:
+            n=0
+            return{
+                "type": "shoot",
+                "direction": [1, 0],
+            }
 
 if __name__ == "__main__":
     multipaint.run(MegaBot4000)
