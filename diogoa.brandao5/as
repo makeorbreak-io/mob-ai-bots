@@ -11,9 +11,7 @@ class MegaBot4000(object):
 
     def next_move(self, state):
         return {
-            "type": random.choice(["walk"]),
-            "direction": random.choice([[1, 0], [-1, 0], [0, 1], [0, -1]]),
-            
+            0
         }
 
 
