@@ -11,12 +11,8 @@ class MegaBot4000(object):
 
     def next_move(self, state):
         return {
-            i=0 
-            n=0
-            for i in range(0,100):
-                if n=0:
-                    "type": random.choice(["shoot_down"]),
-                    "direction": random.choice([[1, 0], [-1, 0], [0, 1], [0, -1]]),
+            \\"type": random.choice(["walk", "shoot"]),
+            "direction": random.choice([[1, 0], [-1, 0], [0, 1], [0, -1]]),
             
         }
 
