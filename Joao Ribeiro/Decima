@@ -2,19 +2,72 @@ import random
 import json
 import sys
 
+
 import multipaint
+
+class decima():
+    def __init__(self):
+        self.cord = []
+        self.dir = []
+        self.type ="walk"
+        self.paint =1
+        self.distx = 0
+        self.disty = 0
+class bot():
+    def __init__(self):
+        self.cord = []
+        self.type = "?"
+        self.paint = 1
 
 
 class MegaBot4000(object):
+
     def __init__(self, player_id):
         self.player_id = player_id
 
+
+
     def next_move(self, state):
+
+
+        turn=state["turns_left"]
+
+        decima.cord = state["player_positions"]["bob"]
+        bot.cord=state["player_positions"]["alice"]
+
+
+        decima.disty=bot.cord[0]-decima.cord[0]
+        decima.distx=bot.cord[1]-decima.cord[1]
+
+
+
+        r=random.choice([1,2])
+        if r==1:
+            if decima.distx>0:
+                move=[0,1]
+            if decima.distx<0:
+                move=[0,-1]
+            if decima.distx==0:
+                move=[0,0]
+
+        if r==2:
+            if decima.disty>0:
+                move=[1,0]
+            if decima.disty<0:
+                move=[-1,0]
+            if decima.disty==0:
+                move=[0,0]
+
+
+
+        decima.type="walk"
         return {
-            "type": random.choice(["walk", "shoot"]),
-            "direction": random.choice([[1, 0], [-1, 0], [0, 1], [0, -1]]),
+            "type": decima.type,
+            "direction": move,
         }
 
 
 if __name__ == "__main__":
+
+
     multipaint.run(MegaBot4000)
