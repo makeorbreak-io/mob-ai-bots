@@ -1,6 +1,5 @@
 import random
-import json
-import sys
+
 
 
 import multipaint
@@ -32,8 +31,11 @@ class MegaBot4000(object):
 
         turn=state["turns_left"]
 
-        decima.cord = state["player_positions"]["bob"]
-        bot.cord=state["player_positions"]["alice"]
+        decima.cord = state["player_positions"][0]
+        bot.cord=state["player_positions"][1]
+
+
+       
 
 
         decima.disty=bot.cord[0]-decima.cord[0]
@@ -44,17 +46,17 @@ class MegaBot4000(object):
         r=random.choice([1,2])
         if r==1:
             if decima.distx>0:
-                move=[0,1]
-            if decima.distx<0:
                 move=[0,-1]
+            if decima.distx<0:
+                move=[0,1]
             if decima.distx==0:
                 move=[0,0]
 
         if r==2:
             if decima.disty>0:
-                move=[1,0]
-            if decima.disty<0:
                 move=[-1,0]
+            if decima.disty<0:
+                move=[1,0]
             if decima.disty==0:
                 move=[0,0]
 
