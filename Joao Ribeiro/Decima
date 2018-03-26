@@ -5,6 +5,43 @@ import sys
 
 import multipaint
 
+def walking(decima):
+    r = random.choice([1, 2])
+    if r == 1:
+        if decima.distx > 0:
+            move = [0, 1]
+        if decima.distx < 0:
+            move = [0, -1]
+        if decima.distx == 0:
+            move = [0, 0]
+
+    if r == 2:
+        if decima.disty > 0:
+            move = [1, 0]
+        if decima.disty < 0:
+            move = [-1, 0]
+        if decima.disty == 0:
+            move = [0, 0]
+    return move
+def walking_2(decima):
+    r = random.choice([1, 2])
+    if r == 1:
+        if decima.distx > 0:
+            move = [0,-1]
+        if decima.distx < 0:
+            move = [0, 1]
+        if decima.distx == 0:
+            move = [0, 0]
+
+    if r == 2:
+        if decima.disty > 0:
+            move = [-1, 0]
+        if decima.disty < 0:
+            move = [1, 0]
+        if decima.disty == 0:
+            move = [0, 0]
+    return move
+
 class decima():
     def __init__(self):
         self.cord = []
@@ -59,24 +96,10 @@ class MegaBot4000(object):
         decima.disty=bot.cord[0]-decima.cord[0]
         decima.distx=bot.cord[1]-decima.cord[1]
 
-
-
-        r=random.choice([1,2])
-        if r==1:
-            if decima.distx>0:
-                move=[0,1]
-            if decima.distx<0:
-                move=[0,-1]
-            if decima.distx==0:
-                move=[0,0]
-
-        if r==2:
-            if decima.disty>0:
-                move=[1,0]
-            if decima.disty<0:
-                move=[-1,0]
-            if decima.disty==0:
-                move=[0,0]
+        if number[0]==1:
+           move= walking(decima)
+        else:
+           move= walking_2(decima)
 
 
 
