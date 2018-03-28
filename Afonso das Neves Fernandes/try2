@@ -98,8 +98,8 @@ def create_knowledge():
             flag = 0
         if flag:
             know[0][0]+=1
-        if boardp[xi][xj] == 1:
-            break
+        # if boardp[xi][xj] == 1:
+        #     break
         know[0][1]+=1
         xi+=1
     # print(str(xi) + " " + str(xj))
@@ -113,8 +113,8 @@ def create_knowledge():
             flag = 0
         if flag:
             know[1][0] += 1
-        if boardp[xi][xj] == 1:
-            break
+        # if boardp[xi][xj] == 1:
+        #     break
         know[1][1] += 1
         xi -= 1
 
@@ -132,8 +132,8 @@ def create_knowledge():
             flag = 0
         if flag:
             know[2][0] += 1
-        if boardp[xi][xj] == 1:
-            break
+        # if boardp[xi][xj] == 1:
+        #     break
         know[2][1] += 1
         xj += 1
 
@@ -146,8 +146,8 @@ def create_knowledge():
             flag = 0
         if flag:
             know[3][0] += 1
-        if boardp[xi][xj] == 1:
-            break
+        # if boardp[xi][xj] == 1:
+        #     break
         know[3][1] += 1
         xj -= 1
 
