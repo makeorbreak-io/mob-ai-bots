@@ -80,7 +80,8 @@ class MegaBot4000(object):
 
         lk = (t, d[0],d[1])
         last_play.add(lk)
-        if len(last_play) > 3:
+        if len(last_play) > 5:
+            last_play.pop()
             last_play.pop()
             last_play.pop()
         return {
@@ -167,12 +168,12 @@ def val(ty, dir):
             # print(type[ty])
             # print(direction[dir])
             # print(know[dir-1][0])
-            return abs(know[dir-1][0]*1.6-know[dir][0])*1.7  + v + know[dir][1]*0.5
+            return abs(know[dir-1][0]*1.6-know[dir][0])*2 + v + know[dir][1]*0.6
         else:
             # print(type[ty])
             # print(direction[dir])
             # print(know[dir+1][0])
-            return abs(know[dir+1][0]*1.6-know[dir][0])*1.7  + v + know[dir][1]*0.5
+            return abs(know[dir+1][0]*1.6-know[dir][0])*2  + v + know[dir][1]*0.6
     else:
         # print(type[ty])
         # print(direction[dir])
