@@ -195,7 +195,7 @@ def val(ty, dir):
         # print(type[ty])
         # print(direction[dir])
         # print(know[dir][1])
-        return know[dir][1] + know[dir][2]*1.2 - know[dir][0]*1.3 + v + abs(mposition[0]-oposition[0]) + abs(mposition[1]-oposition[1])*0.9
+        return know[dir][1]*1.5 + know[dir][2]*1.2 - know[dir][0]*1.3 + v + abs(mposition[0]-oposition[0]) + abs(mposition[1]-oposition[1])*0.9
 
 def update_board(bb):
     global height
