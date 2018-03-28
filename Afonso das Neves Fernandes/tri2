@@ -26,6 +26,7 @@ global width #with
 global idx
 
 global last_play
+last_play = [0 for x in range(2)]
 
 class MegaBot4000(object):
     def __init__(self, player_id):
@@ -41,7 +42,6 @@ class MegaBot4000(object):
         global mposition
         global oposition
         global last_play
-        last_play = [0 for x in range(2)]
 
         height = j["height"]
         width = j["width"]
