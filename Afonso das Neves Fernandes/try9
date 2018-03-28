@@ -17,7 +17,9 @@ global know
 know = [[0 for x in range(2)] for y in range(4)]
 
 global mposition
+global oposition
 mposition = [0 for x in range(2)]
+oposition = [0 for x in range(2)]
 
 global height #heigh
 global width #with
@@ -35,6 +37,7 @@ class MegaBot4000(object):
         global width
         global boardp
         global mposition
+        global oposition
 
         height = j["height"]
         width = j["width"]
@@ -48,6 +51,8 @@ class MegaBot4000(object):
                 mposition[0] = value[0]
                 mposition[1] = value[1]
             else:
+                oposition[0]=value[0]
+                oposition[1]=value[1]
                 #print(value)
                 #a = boardp[value[0]][value[1]]
                 boardp[value[0]][value[1]] = 1
@@ -164,6 +169,9 @@ def val(ty, dir):
     global board
     global boardp
     global know
+    global mposition
+    global oposition
+
     xi = mposition[0]+direction[dir][0]
     xj = mposition[1] + direction[dir][1]
     v=0
@@ -177,17 +185,17 @@ def val(ty, dir):
             # print(type[ty])
             # print(direction[dir])
             # print(know[dir-1][0])
-            return (know[dir-1][0]-know[dir][0])*1.2  + v
+            return (know[dir-1][0]-know[dir][0])*1.4  + v
         else:
             # print(type[ty])
             # print(direction[dir])
             # print(know[dir+1][0])
-            return (know[dir+1][0]-know[dir][0])*1.2  + v
+            return (know[dir+1][0]-know[dir][0])*1.4  + v
     else:
         # print(type[ty])
         # print(direction[dir])
         # print(know[dir][1])
-        return know[dir][1] + know[dir][2]*0.75 - know[dir][0] + v
+        return know[dir][1] + know[dir][2]*1.2 - know[dir][0] + v + abs(mposition[0]-oposition[0]) + abs(mposition[1]-oposition[1])
 
 def update_board(bb):
     global height
