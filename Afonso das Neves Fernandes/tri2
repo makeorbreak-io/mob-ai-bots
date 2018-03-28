@@ -25,6 +25,8 @@ global height #heigh
 global width #with
 global idx
 
+global last_play
+
 class MegaBot4000(object):
     def __init__(self, player_id):
         self.player_id = player_id
@@ -38,6 +40,8 @@ class MegaBot4000(object):
         global boardp
         global mposition
         global oposition
+        global last_play
+        last_play = [0 for x in range(2)]
 
         height = j["height"]
         width = j["width"]
@@ -67,14 +71,15 @@ class MegaBot4000(object):
             jk=0
             for dd in direction:
                 xx = val(ik, jk)
-                if (dd == [1, 0] and 0):
-                    int(tt + " " + str(xx))
-                if xx > v:
+                if xx > v and not(last_play[0] == tt and last_play[1] == dd):
                     v = xx
                     t = tt
                     d = dd
                 jk+=1
             ik+=1
+
+        last_play[0] = t
+        last_play[1] = d
         return {
             "type": t ,
             "direction": d ,
