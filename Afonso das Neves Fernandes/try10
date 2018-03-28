@@ -185,12 +185,12 @@ def val(ty, dir):
             # print(type[ty])
             # print(direction[dir])
             # print(know[dir-1][0])
-            return (know[dir-1][0]-know[dir][0])*1.4  + v
+            return abs(know[dir-1][0]-know[dir][0])*1.5  + v
         else:
             # print(type[ty])
             # print(direction[dir])
             # print(know[dir+1][0])
-            return (know[dir+1][0]-know[dir][0])*1.4  + v
+            return abs(know[dir+1][0]-know[dir][0])*1.5  + v
     else:
         # print(type[ty])
         # print(direction[dir])
