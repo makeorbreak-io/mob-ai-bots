@@ -1,0 +1,206 @@
+import random
+import json
+import sys
+
+import multipaint
+
+global board
+global boardp
+
+global type
+type = ["walk", "shoot"]
+
+global direction
+direction = [[1, 0], [-1, 0], [0, 1], [0, -1]]
+
+global know
+know = [[0 for x in range(2)] for y in range(4)]
+
+global mposition
+mposition = [0 for x in range(2)]
+
+global height #heigh
+global width #with
+global idx
+
+class MegaBot4000(object):
+    def __init__(self, player_id):
+        self.player_id = player_id
+        global idx
+        idx = player_id
+
+    def next_move(self, state):
+        j = state
+        global height
+        global width
+        global boardp
+        global mposition
+
+        height = j["height"]
+        width = j["width"]
+
+        update_board(j["colors"])
+
+
+        for attribute, value in j["player_positions"].items():
+            # print (attribute)
+            if attribute == self.player_id:
+                mposition[0] = value[0]
+                mposition[1] = value[1]
+            else:
+                #print(value)
+                #a = boardp[value[0]][value[1]]
+                boardp[value[0]][value[1]] = 1
+
+        create_knowledge()
+
+        v = -500
+        t = 0
+        d = 0
+        ik=0
+        for tt in type:
+            jk=0
+            for dd in direction:
+                xx = val(ik, jk)
+                if (dd == [1, 0] and 0):
+                    int(tt + " " + str(xx))
+                if xx > v:
+                    v = xx
+                    t = tt
+                    d = dd
+                jk+=1
+            ik+=1
+        return {
+            "type": t ,
+            "direction": d ,
+        }
+
+def create_knowledge():
+    global height
+    global width
+    global board
+    global boardp
+    global know
+    global mposition
+
+    # print(board)
+    # print(boardp)
+
+    know = [[0 for x in range(2)] for y in range(4)]
+
+    xi = mposition[0]
+    xj = mposition[1]
+
+    # print(str(xi)+" "+str(xj))
+    flag = 1
+    while 0<=xi<height:
+        if board[xi][xj] != idx:
+            flag = 0
+        if flag:
+            know[0][0]+=1
+        if boardp[xi][xj] == 1:
+            break
+        know[0][1]+=1
+        xi+=1
+    # print(str(xi) + " " + str(xj))
+
+    xi = mposition[0]
+    xj = mposition[1]
+
+    flag = 1
+    while 0 <= xi < height:
+        if board[xi][xj] != idx:
+            flag = 0
+        if flag:
+            know[1][0] += 1
+        if boardp[xi][xj] == 1:
+            break
+        know[1][1] += 1
+        xi -= 1
+
+    # know[0][0]+= know[1][0]
+    # know[1][0] = know[0][0]
+    # know[0][1]+= know[1][1]
+    # know[1][1] = know[0][1]
+
+    xi = mposition[0]
+    xj = mposition[1]
+
+    flag = 1
+    while 0 <= xj < width:
+        if board[xi][xj] != idx:
+            flag = 0
+        if flag:
+            know[2][0] += 1
+        if boardp[xi][xj] == 1:
+            break
+        know[2][1] += 1
+        xj += 1
+
+    xi = mposition[0]
+    xj = mposition[1]
+
+    flag = 1
+    while 0 <= xj < width:
+        if board[xi][xj] != idx:
+            flag = 0
+        if flag:
+            know[3][0] += 1
+        if boardp[xi][xj] == 1:
+            break
+        know[3][1] += 1
+        xj -= 1
+
+    # know[2][0] += know[3][0]
+    # know[3][0] =  know[2][0]
+    # know[2][1] += know[3][1]
+    # know[3][1] =  know[2][1]
+
+def val(ty, dir):
+    global board
+    global boardp
+    global know
+    xi = mposition[0]+direction[dir][0]
+    xj = mposition[1] + direction[dir][1]
+    v=0
+    if 0 <= xi < height and 0 <= xj < width:
+        if board[xi][xj] != idx:
+            v = 5
+        else:
+            v = 2
+    if ty:
+        if not dir % 2 == 0:
+            # print(type[ty])
+            # print(direction[dir])
+            # print(know[dir-1][0])
+            return know[dir-1][0] + v
+        else:
+            # print(type[ty])
+            # print(direction[dir])
+            # print(know[dir+1][0])
+            return know[dir+1][0] + v
+    else:
+        # print(type[ty])
+        # print(direction[dir])
+        # print(know[dir][1])
+        return know[dir][1] + v
+
+def update_board(bb):
+    global height
+    global width
+
+    global board
+    global boardp
+
+    board = [[0 for x in range(width)] for y in range(height)]
+    boardp = [[0 for x in range(width)] for y in range(height)]
+
+    for i in range(height):
+        for j in range(width):
+            board[i][j]=bb[i][j]
+            boardp[i][j]=0
+
+
+
+if __name__ == "__main__":
+    multipaint.run(MegaBot4000)
