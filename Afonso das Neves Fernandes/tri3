@@ -80,8 +80,7 @@ class MegaBot4000(object):
 
         lk = (t, d[0],d[1])
         last_play.add(lk)
-        if len(last_play) > 5:
-            last_play.pop()
+        if len(last_play) > 3:
             last_play.pop()
             last_play.pop()
         return {
