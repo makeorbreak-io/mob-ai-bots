@@ -86,10 +86,10 @@ class MegaBot4000(object):
 
         lk = (t, d[0],d[1])
         last_play.add(lk)
-        if len(last_play) > 5:
+        if len(last_play) > 8:
             last_play.pop()
             last_play.pop()
-            last_play.pop()
+            oposition = mposition
         return {
             "type": t ,
             "direction": d ,
