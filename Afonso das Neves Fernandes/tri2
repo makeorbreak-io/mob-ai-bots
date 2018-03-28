@@ -26,7 +26,7 @@ global width #with
 global idx
 
 global last_play
-last_play = [0 for x in range(2)]
+last_play = set()
 
 class MegaBot4000(object):
     def __init__(self, player_id):
@@ -47,7 +47,6 @@ class MegaBot4000(object):
         width = j["width"]
 
         update_board(j["colors"])
-
 
         for attribute, value in j["player_positions"].items():
             # print (attribute)
@@ -71,15 +70,18 @@ class MegaBot4000(object):
             jk=0
             for dd in direction:
                 xx = val(ik, jk)
-                if xx > v and not(last_play[0] == tt and last_play[1] == dd):
+                lk = (tt,dd[0],dd[1])
+                if xx > v and not lk in last_play:
                     v = xx
                     t = tt
                     d = dd
                 jk+=1
             ik+=1
 
-        last_play[0] = t
-        last_play[1] = d
+        lk = (t, d[0],d[1])
+        last_play.add(lk)
+        if len(last_play) > 3:
+            last_play.pop()
         return {
             "type": t ,
             "direction": d ,
