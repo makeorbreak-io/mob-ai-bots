@@ -167,7 +167,7 @@ public class Bot implements multipaint.Bot {
         if(DEBUG) {
           System.err.println("1. "  + type + " [" + dir[0] + ", " + dir[1] + "] (score: " + st.score + ")");
         }
-        Score score = dfs(st, 5);
+        Score score = dfs(st, 4);
         score.discountedScore = st.history.peek().score + score.discountedScore * 0.75;
         if(score.compareTo(bestScore) > 0) {
           bestScore = score;
