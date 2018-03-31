@@ -15,23 +15,24 @@ public class Bot implements multipaint.Bot {
 
   private static final String[] ActionTypes = new String[]{"shoot", "walk"};
   private static final int[][] ActionDirections = new int[][]{
-    {-1, -1}, { 0, -1}, { 1, -1},
-    {-1,  0},           { 1,  0},
-    {-1,  1}, { 0,  1}, { 1,  1},
+          {-1, -1}, { 0, -1}, { 1, -1},
+          {-1,  0},           { 1,  0},
+          {-1,  1}, { 0,  1}, { 1,  1},
   };
   private static final int[] NullDirection = { 0, 0 };
+  private static final int MaxRange = 1;
 
   private String playerId;
 
   private static class Score implements Comparable<Score> {
-    int score; int weightedScore;
+    int score; double discountedScore;
 
-    Score(int score, int weightedScore) {
-      this.score = score; this.weightedScore = weightedScore;
+    Score(int score, double discountedScore) {
+      this.score = score; this.discountedScore = discountedScore;
     }
 
     public int compareTo(Score o) {
-      return score != o.score ? Integer.compare(score, o.score) : Integer.compare(weightedScore, o.weightedScore);
+      return score != o.score ? Integer.compare(score, o.score) : Double.compare(discountedScore, o.discountedScore);
     }
   }
 
@@ -78,8 +79,8 @@ public class Bot implements multipaint.Bot {
       } else {
         res.posDiff = NullDirection;
         int[] cur = currPos.clone();
-        int turnsLeft = board.turns_left;
-        while((turnsLeft--) >= 0 && isValidMove(cur, dir)) {
+        int range = Math.min(board.turns_left, MaxRange);
+        while((range--) > 0 && isValidMove(cur, dir)) {
           cur[0] += dir[0]; cur[1] += dir[1];
           paint(res, cur);
         }
@@ -120,7 +121,7 @@ public class Bot implements multipaint.Bot {
         for(int i = 0; i < 7 - maxDepth; i++) System.err.print("  ");
         System.err.println((7 - maxDepth + 1) + ". eval: " + st.score);
       }
-      return new Score(st.score, st.score);
+      return new Score(st.score, 0);
     }
     Score best = new Score(0, 0);
     for(int[] dir : ActionDirections) {
@@ -132,7 +133,7 @@ public class Bot implements multipaint.Bot {
           System.err.println((7 - maxDepth + 1) + ". "  + type + " [" + dir[0] + ", " + dir[1] + "] (score: " + st.score + ")");
         }
         Score score = dfs(st, maxDepth - 1);
-        score.weightedScore += Math.pow(st.history.peek().score, maxDepth);
+        score.discountedScore = st.history.peek().score + score.discountedScore * 0.75;
         if(score.compareTo(best) > 0) { best = score; }
         st.undo();
       }
@@ -166,7 +167,8 @@ public class Bot implements multipaint.Bot {
         if(DEBUG) {
           System.err.println("1. "  + type + " [" + dir[0] + ", " + dir[1] + "] (score: " + st.score + ")");
         }
-        Score score = dfs(st, 4);
+        Score score = dfs(st, 5);
+        score.discountedScore = st.history.peek().score + score.discountedScore * 0.75;
         if(score.compareTo(bestScore) > 0) {
           bestScore = score;
           a.type = type; a.direction = dir;
@@ -178,7 +180,7 @@ public class Bot implements multipaint.Bot {
       assertEquals(st.history.isEmpty(), true);
       assertEquals(st.currPos, board.player_positions.get(playerId));
       assertEquals(copy, Arrays.deepToString(board.colors));
-      System.err.println("bestScore: " + bestScore.score + "/" + bestScore.weightedScore);
+      System.err.println("bestScore: " + bestScore.score + "/" + bestScore.discountedScore);
     }
     return a;
   }
