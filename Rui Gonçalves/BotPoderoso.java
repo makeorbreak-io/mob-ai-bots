@@ -166,7 +166,7 @@ public class Bot implements multipaint.Bot {
         if(DEBUG) {
           System.err.println("1. "  + type + " [" + dir[0] + ", " + dir[1] + "] (score: " + st.score + ")");
         }
-        Score score = dfs(st, 6);
+        Score score = dfs(st, 4);
         if(score.compareTo(bestScore) > 0) {
           bestScore = score;
           a.type = type; a.direction = dir;
