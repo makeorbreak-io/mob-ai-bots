@@ -81,19 +81,18 @@ public class Bot implements multipaint.Bot {
         paint(res, currPos);
       } else {
         res.posDiff = NullDirection;
-        paint(res, new int[]{ currPos[0] + dir[0], currPos[1] + dir[1]});
+        paint(res, new int[]{currPos[0] + dir[0], currPos[1] + dir[1]});
 
-//        int[] cur = new int[]{currPos[0] + dir[0], currPos[1] + dir[1]};
-//        int[] backCur = new int[]{currPos[0] - dir[0], currPos[1] - dir[1]};
-//        int[] backDir = new int[]{-dir[0], -dir[1]};
-//        while (isValidMove(cur, dir) && isValidMove(backCur, backDir)) {
-//          cur[0] += dir[0];
-//          cur[1] += dir[1];
-//          backCur[0] += backDir[0];
-//          backCur[1] += backDir[1];
-//          if (!board.colors[backCur[1]][backCur[0]].equals(playerId)) break;
-//          paint(res, cur);
-//        }
+        int[] cur = currPos.clone(), backCur = currPos.clone();
+        int[] backDir = new int[]{-dir[0], -dir[1]};
+        while (isValidMove(cur, dir) && isValidMove(backCur, backDir)) {
+          cur[0] += dir[0];
+          cur[1] += dir[1];
+          backCur[0] += backDir[0];
+          backCur[1] += backDir[1];
+          if (!board.colors[backCur[0]][backCur[1]].equals(playerId)) break;
+          paint(res, cur);
+        }
       }
       history.push(res);
       board.turns_left--;
