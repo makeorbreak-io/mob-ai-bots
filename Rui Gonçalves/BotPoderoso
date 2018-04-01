@@ -9,26 +9,26 @@ import java.util.Stack;
 
 public class Bot implements multipaint.Bot {
   private static final boolean DEBUG = false;
+
   private static <A> void assertEquals(A a1, A a2) {
-    if(!a1.equals(a2)) throw new AssertionError(a1 + " != " + a2);
+    if (!a1.equals(a2)) throw new AssertionError(a1 + " != " + a2);
   }
 
   private static final String[] ActionTypes = new String[]{"shoot", "walk"};
   private static final int[][] ActionDirections = new int[][]{
-          {-1, -1}, { 0, -1}, { 1, -1},
-          {-1,  0},           { 1,  0},
-          {-1,  1}, { 0,  1}, { 1,  1},
+      {-1, -1}, {0, -1}, {1, -1},
+      {-1, 0}, {1, 0},
+      {-1, 1}, {0, 1}, {1, 1},
   };
-  private static final int[] NullDirection = { 0, 0 };
-  private static final int MaxRange = 1;
-
-  private String playerId;
+  private static final int[] NullDirection = {0, 0};
 
   private static class Score implements Comparable<Score> {
-    int score; double discountedScore;
+    int score;
+    double discountedScore;
 
     Score(int score, double discountedScore) {
-      this.score = score; this.discountedScore = discountedScore;
+      this.score = score;
+      this.discountedScore = discountedScore;
     }
 
     public int compareTo(Score o) {
@@ -46,20 +46,22 @@ public class Bot implements multipaint.Bot {
     }
   }
 
-  private class State {
+  private static class State {
     Board board;
+    String playerId;
     Stack<ActionResult> history;
     int[] currPos;
     int score;
 
-    State(Board b) {
+    State(Board b, String playerId) {
       board = b;
+      this.playerId = playerId;
       history = new Stack<>();
       currPos = b.player_positions.get(playerId);
-      for(String[] row : b.colors) {
-        for(String cell : row) {
-          if(cell != null) {
-            if(cell.equals(playerId)) score++;
+      for (String[] row : b.colors) {
+        for (String cell : row) {
+          if (cell != null) {
+            if (cell.equals(playerId)) score++;
             else score--;
           }
         }
@@ -72,18 +74,26 @@ public class Bot implements multipaint.Bot {
 
     void doAction(String type, int[] dir) {
       ActionResult res = new ActionResult();
-      if(type.equals("walk")) {
+      if (type.equals("walk")) {
         res.posDiff = dir;
-        currPos[0] += dir[0]; currPos[1] += dir[1];
+        currPos[0] += dir[0];
+        currPos[1] += dir[1];
         paint(res, currPos);
       } else {
         res.posDiff = NullDirection;
-        int[] cur = currPos.clone();
-        int range = Math.min(board.turns_left, MaxRange);
-        while((range--) > 0 && isValidMove(cur, dir)) {
-          cur[0] += dir[0]; cur[1] += dir[1];
-          paint(res, cur);
-        }
+        paint(res, new int[]{ currPos[0] + dir[0], currPos[1] + dir[1]});
+
+//        int[] cur = new int[]{currPos[0] + dir[0], currPos[1] + dir[1]};
+//        int[] backCur = new int[]{currPos[0] - dir[0], currPos[1] - dir[1]};
+//        int[] backDir = new int[]{-dir[0], -dir[1]};
+//        while (isValidMove(cur, dir) && isValidMove(backCur, backDir)) {
+//          cur[0] += dir[0];
+//          cur[1] += dir[1];
+//          backCur[0] += backDir[0];
+//          backCur[1] += backDir[1];
+//          if (!board.colors[backCur[1]][backCur[0]].equals(playerId)) break;
+//          paint(res, cur);
+//        }
       }
       history.push(res);
       board.turns_left--;
@@ -91,50 +101,53 @@ public class Bot implements multipaint.Bot {
 
     void undo() {
       ActionResult res = history.pop();
-      currPos[0] -= res.posDiff[0]; currPos[1] -= res.posDiff[1];
+      currPos[0] -= res.posDiff[0];
+      currPos[1] -= res.posDiff[1];
       score -= res.score;
-      for(Map.Entry<int[], String> e : res.cellsPainted.entrySet()) {
-        board.colors[e.getKey()[1]][e.getKey()[0]] = e.getValue();
+      for (Map.Entry<int[], String> e : res.cellsPainted.entrySet()) {
+        board.colors[e.getKey()[0]][e.getKey()[1]] = e.getValue();
       }
       board.turns_left++;
     }
 
     private boolean isValidMove(int[] pos, int[] dir) {
       return pos[0] + dir[0] >= 0 && pos[0] + dir[0] < board.width &&
-              pos[1] + dir[1] >= 0 && pos[1] + dir[1] < board.height;
+          pos[1] + dir[1] >= 0 && pos[1] + dir[1] < board.height;
     }
 
     private void paint(ActionResult res, int[] pos) {
-      String cellPlayer = board.colors[pos[1]][pos[0]];
-      if(playerId.equals(cellPlayer)) return;
+      String cellPlayer = board.colors[pos[0]][pos[1]];
+      if (playerId.equals(cellPlayer)) return;
 
       res.cellsPainted.put(pos.clone(), cellPlayer);
-      board.colors[pos[1]][pos[0]] = playerId;
+      board.colors[pos[0]][pos[1]] = playerId;
       res.score += (cellPlayer == null ? 1 : 2);
       score += (cellPlayer == null ? 1 : 2);
     }
   }
 
-  private Score dfs(State st, int maxDepth) {
-    if(st.board.turns_left == 0 || maxDepth == 0) {
-      if(DEBUG) {
-        for(int i = 0; i < 7 - maxDepth; i++) System.err.print("  ");
+  private static Score dfs(State st, int maxDepth) {
+    if (st.board.turns_left == 0 || maxDepth == 0) {
+      if (DEBUG) {
+        for (int i = 0; i < 7 - maxDepth; i++) System.err.print("  ");
         System.err.println((7 - maxDepth + 1) + ". eval: " + st.score);
       }
       return new Score(st.score, 0);
     }
     Score best = new Score(0, 0);
-    for(int[] dir : ActionDirections) {
-      if(st.isInvalidAction(dir)) continue;
-      for(String type : ActionTypes) {
+    for (int[] dir : ActionDirections) {
+      if (st.isInvalidAction(dir)) continue;
+      for (String type : ActionTypes) {
         st.doAction(type, dir);
-        if(DEBUG) {
-          for(int i = 0; i < 7 - maxDepth; i++) System.err.print("  ");
-          System.err.println((7 - maxDepth + 1) + ". "  + type + " [" + dir[0] + ", " + dir[1] + "] (score: " + st.score + ")");
+        if (DEBUG) {
+          for (int i = 0; i < 7 - maxDepth; i++) System.err.print("  ");
+          System.err.println((7 - maxDepth + 1) + ". " + type + " [" + dir[0] + ", " + dir[1] + "] (score: " + st.score + ")");
         }
         Score score = dfs(st, maxDepth - 1);
         score.discountedScore = st.history.peek().score + score.discountedScore * 0.75;
-        if(score.compareTo(best) > 0) { best = score; }
+        if (score.compareTo(best) > 0) {
+          best = score;
+        }
         st.undo();
       }
     }
@@ -143,43 +156,46 @@ public class Bot implements multipaint.Bot {
 
   // ---
 
+  private String playerId;
+
   public void setPlayerId(String playerId) {
     this.playerId = playerId;
   }
 
   public Action nextMove(Board board) {
     String copy;
-    if(DEBUG) {
-      copy = Arrays.deepToString(board.colors);
+    if (DEBUG) {
+      copy = Arrays.deepToString(board.colors) + Arrays.deepToString(ActionDirections);
     }
 
     Score bestScore = new Score(0, 0);
     Action a = new Action();
-    State st = new State(board);
-    if(DEBUG) {
+    State st = new State(board, playerId);
+    if (DEBUG) {
       System.err.println("player: " + playerId);
       System.err.println("start (" + st.score + ")");
     }
-    for(int[] dir : ActionDirections) {
-      if(st.isInvalidAction(dir)) continue;
-      for(String type : ActionTypes) {
+    for (int[] dir : ActionDirections) {
+      if (st.isInvalidAction(dir)) continue;
+      for (String type : ActionTypes) {
         st.doAction(type, dir);
-        if(DEBUG) {
-          System.err.println("1. "  + type + " [" + dir[0] + ", " + dir[1] + "] (score: " + st.score + ")");
+        if (DEBUG) {
+          System.err.println("1. " + type + " [" + dir[0] + ", " + dir[1] + "] (score: " + st.score + ")");
         }
         Score score = dfs(st, 4);
         score.discountedScore = st.history.peek().score + score.discountedScore * 0.75;
-        if(score.compareTo(bestScore) > 0) {
+        if (score.compareTo(bestScore) > 0) {
           bestScore = score;
-          a.type = type; a.direction = dir;
+          a.type = type;
+          a.direction = dir;
         }
         st.undo();
       }
     }
-    if(DEBUG) {
+    if (DEBUG) {
       assertEquals(st.history.isEmpty(), true);
       assertEquals(st.currPos, board.player_positions.get(playerId));
-      assertEquals(copy, Arrays.deepToString(board.colors));
+      assertEquals(copy, Arrays.deepToString(board.colors) + Arrays.deepToString(ActionDirections));
       System.err.println("bestScore: " + bestScore.score + "/" + bestScore.discountedScore);
     }
     return a;
