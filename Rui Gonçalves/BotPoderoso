@@ -90,7 +90,7 @@ public class Bot implements multipaint.Bot {
           cur[1] += dir[1];
           backCur[0] += backDir[0];
           backCur[1] += backDir[1];
-          if (!board.colors[backCur[0]][backCur[1]].equals(playerId)) break;
+          if (!playerId.equals(board.colors[backCur[0]][backCur[1]])) break;
           paint(res, cur);
         }
       }
