@@ -1,0 +1,163 @@
+"use strict";
+
+const multipaint = require("multipaint");
+
+const choice = (array) => array[Math.floor(Math.random() * array.length)];
+const printBoard = (board) => console.error("board:\n",board.map(l => l.map( o => `${o.root}-${o.around}-${o.shoot.value}` ).join("|")))
+const surroundings = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+const getDirections = () => {
+  const a = surroundings;
+  for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+const calculateAroundValue = (colors, [row,column], height, width, player_id) => {
+  
+  
+  let value =0;
+  const arrayDirections = surroundings;
+  arrayDirections.forEach( dir => {
+    const nextRow = row+dir[0];
+    const nextCol = column + dir[1];
+    if(nextRow <0 || nextRow >= height || nextCol < 0 || nextCol >= width){ 
+    }else if(colors[nextRow][nextCol] != player_id ){
+      value++;
+    }
+  });
+  return value;
+};
+
+
+
+const calculateCellValue = (name, player_id, state, pos) => {
+  let value = {root: 0, around: 0, shoot: {value: 0, dir: [0,0]}};
+  switch(name){
+    case player_id:
+      value.root =  0;
+      break;
+    case null:
+      value.root = 1;
+      break;
+    default:
+      value.root =2;
+      break;
+  }
+  const [shootValue, dir] = calculateShootValue(state.colors, pos, state.height, state.width, player_id);
+  value.shoot = {value: shootValue, dir};
+  value.around = calculateAroundValue(state.colors, pos, state.height, state.width, player_id);
+  return value;
+}
+
+const calculateShootValue = (colors, [prow, pcolumn],height, width,player_id ) => {
+  let maxPoints=-1;
+  let chosenDirection=[0,0];
+
+  const arrayDirections = getDirections();
+  arrayDirections.forEach( dir => {
+    let inc = 0;
+    let value=0;
+    while(true){
+      inc++;
+      const nextRow = prow - inc*dir[0]; 
+      const nextCol = pcolumn - inc*dir[1]; 
+      if(nextRow <0 || nextRow >= width || nextCol < 0 || nextCol >= height){
+        break;
+      }else {
+        if(colors[nextRow][nextCol] == player_id){
+          value++;
+        }else{
+          break;
+        }
+
+      }
+    }
+    inc=0;
+    let dem=0;
+    while(inc < value){
+      inc++;
+      const nextRow = prow + inc*dir[0]; 
+      const nextCol = pcolumn + inc*dir[1]; 
+      if(nextRow <0 || nextRow >= width || nextCol < 0 || nextCol >= height){
+        dem++;
+      }else {
+        if(colors[nextRow][nextCol] == player_id){
+          dem++;
+        }else if(colors[nextRow][nextCol] == null){
+        }else {
+          dem--;
+        }
+      }
+    }
+    value = value - dem;
+    if(value > maxPoints){
+      maxPoints = value;
+      chosenDirection = dir;
+    }
+  });
+  return [maxPoints,chosenDirection];
+}
+
+
+const chooseAction = (board, [prow, pcolumn], height, width,player_id,colors,player_positions) => {
+  let maxPoints= {root: -1,around:-1,shoot: -1};
+  let chosenDirection=[0,0];
+  let chosenAction='walk';
+
+  const arrayDirections = getDirections();
+  arrayDirections.forEach( dir => {
+    const row =  prow + dir[0];
+    const column =  pcolumn + dir[1];
+    if(column >= 0 && column < width && row >= 0 && row < height){
+    
+      const points = board[row][column];
+      if(points.root > maxPoints.root) {
+        maxPoints = points;
+        chosenDirection = dir;
+        chosenAction = 'walk';
+      }else if(points.root === maxPoints.root && points.shoot > maxPoints.shoot){
+        maxPoints = points;
+        chosenDirection = dir;
+        chosenAction = 'walk';
+      }else if(points.root === maxPoints.root && points.around > maxPoints.around){
+        maxPoints = points;
+        chosenDirection = dir;
+        chosenAction = 'walk';
+      }
+    }
+  });
+  const { value, dir } = board[prow][pcolumn].shoot;
+  if(value > maxPoints.root) {
+    if(board[prow + dir[0]][pcolumn + dir[1]].shoot.value > value){
+      maxPoints = value;
+      chosenDirection = dir;
+      chosenAction = 'walk';
+    }else {
+      maxPoints = value;
+      chosenDirection = dir;
+      chosenAction = 'shoot';
+    }
+  }
+ return [chosenAction, chosenDirection]; 
+}
+
+class Megabot2000 {
+  constructor(player_id) {
+    this.player_id = player_id;
+  }
+
+  next_move(state) {
+    let board = state.colors.map((line,row) => line.map( (cell, column) => (calculateCellValue(cell, this.player_id,state,[row,column]))));
+    const otherPlayers = Object.keys(state.player_positions).map( key => key != this.player_id ? state.player_positions[key] : null).filter( o=> o );
+    otherPlayers.forEach(o => board[o[0]][o[1]] = {root: -1 ,around: -1, shoot: {value: -1, dir: [0,0]}});
+    const [type, direction] = chooseAction(board, state.player_positions[this.player_id],state.height,state.width,this.player_id,state.colors,state.player_positions);
+    return {
+      type,
+      direction,
+    };
+  }
+}
+
+multipaint.run(Megabot2000);
