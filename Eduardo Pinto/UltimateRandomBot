@@ -80,7 +80,7 @@ public class Bot implements multipaint.Bot {
         Integer[] indexesShoot = new Integer[]{0, 1, 2, 3, 4, 5, 6, 7};
         Arrays.sort(indexesShoot, (o1, o2) -> Integer.compare(shootPoints[o1], shootPoints[o2]));
 
-        if (walkPoints[indexes[7]] >= shootPoints[indexesShoot[7]]) {
+        if (walkPoints[indexes[7]] > shootPoints[indexesShoot[7]]) {
             a.direction = ActionDirections[indexes[7]];
             a.type = ActionTypes[1];
         } else {
@@ -137,7 +137,7 @@ public class Bot implements multipaint.Bot {
                 .getKey();
     }
 
-    private int classifyShoot(int[] actionDir, int[] currentPos, String[][] colors, Map<String, int[]> opponents) {
+    private int classifyShoot(int[] actionDir, int[] currentPos, String[][] colors, Map<String, int[]> players) {
         int points = 0;
 
         int[] paintPos = calculateNewPos(currentPos, actionDir);
@@ -154,7 +154,7 @@ public class Bot implements multipaint.Bot {
 
         // point forward shoot
         for (int[] nextPos = paintPos.clone();
-             isWithinLimits(nextPos, colors) && paintedOwn > 0 && !isOccupiedByOpponent(nextPos, opponents);
+             isWithinLimits(nextPos, colors) && paintedOwn > 0 && !isOccupiedByOpponent(nextPos, players);
              paintedOwn--) {
             if (null == colors[nextPos[0]][nextPos[1]])
                 points += 1;
@@ -185,6 +185,7 @@ public class Bot implements multipaint.Bot {
 
     private int classifyWalk(int[] dir, int[] nextPos, String[][] colors, Map<String, int[]> players) {
         int points = 0;
+
         if (!isWithinLimits(nextPos, colors))
             return points;
 
@@ -199,6 +200,7 @@ public class Bot implements multipaint.Bot {
         if (isOccupiedByOpponent(nextPos, players))
             points -= 2;
 
+        points += classifyShoot(dir, nextPos, colors, players) / 2;
         System.err.println("Walk : " + dirToString(dir) + " (" + points + " pts)");
 
         return points;
