@@ -76,9 +76,11 @@ public class Bot implements multipaint.Bot {
 
         Integer[] indexes = new Integer[]{0, 1, 2, 3, 4, 5, 6, 7};
         Arrays.sort(indexes, (o1, o2) -> Integer.compare(walkPoints[o1], walkPoints[o2]));
+        Stream.of(indexes).forEach(i -> System.err.println("Walk: " + dirToString(ActionDirections[i]) + " (" + walkPoints[i] + ")"));
 
         Integer[] indexesShoot = new Integer[]{0, 1, 2, 3, 4, 5, 6, 7};
         Arrays.sort(indexesShoot, (o1, o2) -> Integer.compare(shootPoints[o1], shootPoints[o2]));
+        Stream.of(indexesShoot).forEach(i -> System.err.println("Shoot: " + dirToString(ActionDirections[i]) + " (" + shootPoints[i] + ")"));
 
         if (walkPoints[indexes[7]] > shootPoints[indexesShoot[7]]) {
             a.direction = ActionDirections[indexes[7]];
@@ -97,7 +99,6 @@ public class Bot implements multipaint.Bot {
         }
 
         System.err.println("Play: " + actionToString(a));
-
         return a;
     }
 
@@ -156,18 +157,18 @@ public class Bot implements multipaint.Bot {
         for (int[] nextPos = paintPos.clone();
              isWithinLimits(nextPos, colors) && paintedOwn > 0 && !isOccupiedByOpponent(nextPos, players);
              paintedOwn--) {
-            if (null == colors[nextPos[0]][nextPos[1]])
+            if (isEmpty(nextPos, colors))
                 points += 1;
             else if (!isOwnColor(nextPos, colors))
                 points += 2;
+            else
+                points -= 1;
 
             nextPos = calculateNewPos(nextPos, actionDir);
         }
 
         if (surroundedIfShoot(paintPos, currentPos, colors))
             points -= 1;
-
-        System.err.println("Shoot: " + dirToString(actionDir) + " (" + points + " pts)");
 
         return points;
     }
@@ -189,21 +190,29 @@ public class Bot implements multipaint.Bot {
         if (!isWithinLimits(nextPos, colors))
             return points;
 
-        if (null == colors[nextPos[0]][nextPos[1]])
+        if (isEmpty(nextPos, colors))
             points += 1;
-        else if (!playerId.equals(colors[nextPos[0]][nextPos[1]]))
+        else if (!isOwnColor(nextPos, colors))
             points += 2;
+        else
+            points -= 2;
 
-        if (isAtBorder(nextPos, colors))
-            points -= 1;
+        /*if (isAtBorder(nextPos, colors))
+            points -= 1;*/
 
         if (isOccupiedByOpponent(nextPos, players))
             points -= 2;
 
-        points += classifyShoot(dir, nextPos, colors, players) / 2;
-        System.err.println("Walk : " + dirToString(dir) + " (" + points + " pts)");
+        points += classifyOptions(nextPos, colors, players) / 2;
 
         return points;
+    }
+
+    private int classifyOptions(int[] pos, String[][] colors, Map<String, int[]> players) {
+        return Stream.of(ActionDirections)
+                .mapToInt(dir -> classifyShoot(dir, pos, colors, players))
+                .max()
+                .orElse(0);
     }
 
     private int[] calculateNewPos(int[] current, int[] dir) {
@@ -212,6 +221,10 @@ public class Bot implements multipaint.Bot {
 
     private double distance(int[] a, int[] b) {
         return Math.hypot(a[0] - b[0], a[1] - b[1]);
+    }
+
+    private boolean isEmpty(int[] pos, String[][] colors) {
+        return null == colors[pos[0]][pos[1]];
     }
 
     private boolean isOwnColor(int[] pos, String[][] colors) {
