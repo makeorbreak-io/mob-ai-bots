@@ -17,4 +17,4 @@ class MegaBot4000(object):
 
 
 if __name__ == "__main__":
-multipaint.run(MegaBot4000)
+    multipaint.run(MegaBot4000)
