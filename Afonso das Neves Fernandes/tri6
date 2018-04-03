@@ -88,6 +88,7 @@ class MegaBot4000(object):
         last_play.add(lk)
         if len(last_play) > 7:
             last_play.pop()
+            last_play.pop()
             oposition = mposition
         return {
             "type": t ,
