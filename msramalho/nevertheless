@@ -1,14 +1,21 @@
+from __future__ import division
 import sys
 import os
 import json
 import random
 import operator
+import _thread as thread
 from timeit import default_timer
 from itertools import product
 from copy import deepcopy
 from collections import defaultdict
+from random import choice
+from math import log, sqrt
+import datetime
 import numpy as np
-# from time import sleep
+from time import sleep
+# from threading import Lock
+import signal
 
 import multipaint
 
@@ -72,10 +79,16 @@ class State:
                         for p in s["player_positions"].keys()}
 
         # optional (because this may be irrelevant and occupies a lot of space)
-        self.previous_actions = s["previous_actions"] if previous_actions else []
+        # self.previous_actions = s["previous_actions"] if previous_actions else []
+        # if previous_actions:
+        if len(s["previous_actions"]) > 0:
+            self.last_move = s["previous_actions"][-1]
+        else:
+            self.last_move = None
 
-        # load the player scores
-        self.loadPlayerScores()
+        # by default the scores are only loaded on loadPlayerScores
+        self.scores = {}
+        self.moves = None
 
     # generate board - (-1 is for empty, 0 is for objects, 1 to \inf is for players' colors)
     def loadBoard(self, colors, player_names):
@@ -148,8 +161,13 @@ class State:
     # given a tuple of moves for the players index is 1 to n (can use self.player_ids)
     # apply those moves and return a new state
     # if load scores is True then loadPlayerScores is called
-    def getNewState(self, actions):
-        state = deepcopy(self)  # create a copy of the current state
+    def getNewState(self, actions, load_scores=True):
+        # create a copy of the current state
+        state = deepcopy(self)
+        # otherwise singleton does not work, because the moves were only valid for the previous state
+        state.moves = None
+        state.scores = {}
+        state.turns_left -= 1
 
         # ---------1. all movement actions are applied
 
@@ -204,7 +222,13 @@ class State:
                         bot_shots[id][3] = False  # set inactive
                         activeShots -= 1  # update active count
                     elif k <= r:  # must be active and within range
-                        nPos = pos + k * d  # new position
+                        # TODO: ver porque é que isto estoura às vezes -> resposta o d, actions[i]["direction"] vem como não np.array, mas ainda não percebi pq
+                        try:
+                            nPos = pos + k * d  # new position
+                        except ValueError as err:
+                            nPos = pos + k * np.array(d)
+                            # p("nPos = %s, pos = %s, k = %s, d = %s, bot_shots[%s] = %s" % (nPos, pos, k, d, id, bot_shots[id]))
+                            # p(err)
                         squares[(nPos[0], nPos[1])].append(id)  # use tuple as dict key instead of str for 2.3.3
             # 2.3.2 any shots that share a square with other shots or with any avatars, or that are in squares painted in this turn, are disabled
             for square, bots in squares.copy().items():  # copy because the original will be changed
@@ -221,60 +245,243 @@ class State:
 
             k += 1
 
-        state.loadPlayerScores()
+        if load_scores:
+            state.loadPlayerScores()
 
         return state
 
-    # given the current game state and a next state, calculate the value of the next state
-    def getGreedyHeuristic(self, next_state):
-        totalSquares = self.rows * self.columns
-        prev_empty = self.scores[-1]
-        next_empty = next_state.scores[-1]
+    # given the current game state evaluate the value of the board
+    def getHeuristic(self):
+        total_squares = self.rows * self.columns
+        my_squares = self.scores[self.me]
+        empty_squares = self.scores[-1]  # ignore objects
+        opponents_squares = total_squares - my_squares - empty_squares
+        return (my_squares - opponents_squares) / total_squares
 
-        prev_squares = self.scores[self.me]  # my previous score
-        next_squares = next_state.scores[self.me]  # my current score
+    # given a history of states, return the winning player
+    def getWinner(self):
+        avatar_scores = {k: v for k, v in self.scores.items() if k > 0}
+        v = list(avatar_scores.values())
+        k = list(avatar_scores.keys())
+        winner = max(v)
+        if v.count(winner) > 1:  # draw
+            return False
+        return k[v.index(winner)]
 
-        prev_opponents = totalSquares - prev_squares
-        next_opponents = totalSquares - next_squares
-        return 0.7 * (next_squares - prev_squares) - 0.3 * (next_opponents - prev_opponents)
-        # opponents = totalSquares - mySquares
-        # return 0.6 * mySquares - 0.4 * opponents
+    # return true if i win at the current state
+    def iWon(self):
+        return self.me == self.getWinner()
 
-    # given a state, get the next move GREEDY
-    def getNextMove(self):
-        allMoves = self.getAllMoveCombinations()  # tipically 0.1 ms
-        moveScores = defaultdict(list)
-        best = - self.rows * self.columns - 1  # worse than worst case
-        for move in allMoves:
-            s = self.getNewState(move)  # typically 0.25 ms
-            score = self.getGreedyHeuristic(s)
-            moveScores[score].append(move)
-            if score > best:
-                best = score
-        return random.choice(moveScores[best])[self.me - 1]
+    # singleton to return a random, not visited state (fails if none left) -> check before -> expand
+    def getRandomMove(self):
+        return self.moves.pop()
+
+    # save all the valid moves singleton style
+    def loadAllMoves(self):
+        if self.moves != None:
+            return
+        self.moves = self.getAllMoveCombinations()
+        random.shuffle(self.moves)
 
     def __repr__(self):
         return "turns_left: %d\nplayers: %s,\nboard: %s" % (self.turns_left, self.players, self.board)
 
 
-#---------------------------------------------BOT
+##################################################################
+
+ROOT = None  # the search tree root
+
+
+# very important: Node.state.moves holds all the moves that have not been expanded
+# Node.children holds all the Nodes resulting from poping a move from Node.state.moves
+class Node(object):
+    MAX_DEPTH = 5  # max depth for the simulation
+    C = 1.4  # learning rate
+    SAMPLES = 1  # number of samples to make for each random_simulation
+    ID = 0
+
+    def __init__(self, state, parent=None, move=None):
+        self.wins = 0
+        self.plays = 0
+        self.parent = parent
+        self.children = {}
+        self.state = state
+        self.move = move  # the move made that led to this state
+        self.expanded = False
+        self.state.loadAllMoves()  # load all the possible moves only once per Node
+        self.heuristic = 0  # node value evaluated by heuristic function for the board
+        # debug stuff
+        self.id = Node.ID
+        Node.ID += 1
+        # backprop if applicable
+        if len(self.state.scores) > 0:
+            self.backprop(self.state.iWon(), self.state.getHeuristic())
+
+    # TODO: use this, but be careful not to delete the new root and its descendants
+    def __del__(self):
+        for child in list(self.children.keys()):#[:]:
+            if child != ROOT:
+                del self.children[child]
+
+    # once more information is received, make the new root of the children of the current root
+    # TODO: if we run into space problems: delete nodes that are not the right child
+    def makeChildNewRoot(new_state):
+        global ROOT
+        old_root = ROOT
+
+        # find the child matching the move made
+        move = tuple(new_state.last_move.values())
+        for action in move:
+            action["direction"] = np.array(action["direction"])
+        move = str(move)
+        if move in old_root.children.keys():  # if every player made a move, start NEH-MCTS
+            ROOT = old_root.children[move]
+        else:  # the next node is not in the tree, so has to restart empty handed MCTS
+            ROOT = Node(new_state)
+        del old_root
+
+    # get the best move for the explored states from the current Node
+    def getNextMove(self):
+        if len(self.children) == 0:
+            best = self.state.getRandomMove()
+        else:
+            best = self.getBestValueChild()  # my best child
+            best = best.move
+        return best[self.state.me - 1]  # my move in that child, 0 indexed, IDS are not
+
+    # get the value (wins/plays ratio) for this node
+    def getValue(self):
+        return self.wins / self.plays
+
+    # get the child with the highest Value
+    # MUST be expanded, otherwise max fails for empty list
+    def getBestValueChild(self):
+        # return max(self.children.values(), key=lambda c: c.getValue())
+        return max(self.children.values(), key=lambda c: c.heuristic)
+
+    # get the child with the highest Value
+    # MUST be expanded, otherwise max fails for empty list
+    def getBestUCTChild(self):
+        return max(self.children.values(), key=lambda c: c.getUCT())
+
+    # get the UCT value for the current node (the root node will crash due to no parent)
+    def getUCT(self):
+        # TODO remove this after testing because it crashes for ROOT id 0
+        if self.parent is None:
+            return -1
+        return self.getValue() + Node.C * sqrt(log(self.parent.plays) / self.plays)
+
+    # if this node is expanded keep on selection until a not expanded node is found
+    def selection(self):
+        # p("Selection for " + str(self) + "\n from these: " + str(self.children) + "\n i choose: ")
+        if self.expanded:
+            # p(self.getBestUCTChild())
+            self.getBestUCTChild().selection()
+        elif len(self.state.moves) > 0:
+            # p("NONE -> i am simulating")
+            self.run_simulation()
+
+    # expand an unexpanded node -> produce all children
+    # TODO: improve this to avoid generating all children
+    def expand(self):
+        self.expanded = True
+        for move in self.state.moves:
+            # with Timer("get new state for move %s of node %d" % (move, self.id)) as t:
+            self.children[str(move)] = Node(self.state.getNewState(move), self, move)
+
+    def updateHeuristic(self, child_heuristic):
+        self.heuristic = max(child_heuristic, self.heuristic)
+        return self.heuristic
+
+    # after a simulation, save the result and propagate it back to its parents recursively
+    def backprop(self, victory, child_heuristic):
+        self.plays += 1
+        if victory:
+            self.wins += 1
+        if self.parent:
+            self.parent.backprop(victory, self.updateHeuristic(child_heuristic))
+
+    # run a NEW simulation for the current node
+    def run_simulation(self):
+        # either simulate for turns_left or MAX_DEPTH
+        node = self  # current node
+        # for j in range(Node.SAMPLES):  # number of samples for each leaf node undergoing MC simulations
+        for i in range(min(self.state.turns_left, Node.MAX_DEPTH + 1)):  # depth of the simulation
+            random_move = node.state.getRandomMove()  # get a random move from the node
+            node = Node(node.state.getNewState(random_move), node, random_move)
+
+    # start mcts -> if expanded, select best child and run recursively
+    # if not expanded -> expand and run_simulation
+    def mcts(self):
+        if self.expanded:  # TODO: can also expand after a given number of plays (THRESHOLD)
+            self.selection()
+        else:
+            self.expand()
+
+    def __repr__(self):
+        if self.plays > 0:
+            return "NODE %d: wins/plays = %d/%d = %.1f, value = %d, UCT: %.2f, children = %d, unexplored = %d" % (self.id, self.wins, self.plays, (100 * self.wins / self.plays), self.getValue(), self.getUCT(), len(self.children), len(self.state.moves))
+        else:
+            return "NODE %d: wins/plays = %d/%d, children = %d, unexplored = %d" % (self.id, self.wins, self.plays, len(self.children), len(self.state.moves))
+
+
+def concurrent_mcts():
+    global ROOT
+    iterations = 0
+    while ROOT is None:
+        pass
+    while True:
+        ROOT.mcts()
+        # p("Iteration %d complete - ROOT is %d" % (iterations, ROOT.id))
+        iterations += 1
+
+##################################################################
+
+
+# lock = Lock()
+
+
+# def handler(signum, frame):
+#     lock.release()
+#     p("end of time")
+
+# signal.signal(signal.SIGALRM, handler)
 
 class Bot(object):
+
     def __init__(self, player_id):
         self.player_id = player_id
+        thread.start_new_thread(concurrent_mcts, ())
 
-    def load_state(self, s):
-        self.state = State(s, self.player_id)
+    def load_root(self):
+        global ROOT
+
+        if ROOT is None:
+            ROOT = Node(self.state)
+        else:
+            Node.makeChildNewRoot(self.state)
+
+    # make this move last as long as possible
+    def smart_sleep(self, start):
+        max_sleep = 0.46 - (default_timer() - start)
+        sleep(max_sleep)
+        # while (default_timer() - start) < 0.45:
+            # sleep(0.01)
+        # p("start = %.4fms, max_sleep = %.4fms, total: %.4fms, " % (start / 1000, max_sleep, (default_timer() - start)))
+        # p("WOKEN UP FROM SLEEP")
 
     def clearChoice(self, c):  # pragma: no cover
         c["direction"] = c["direction"].tolist()
         return c
 
     def next_move(self, s):  # pragma: no cover
-        self.load_state(s)  # tipically 0.1 ms
-        return self.clearChoice(self.state.getNextMove())
+        # with Timer("next_move"):
+        start = default_timer()
+        self.state = State(s, self.player_id)  # tipically 0.1 ms
+        self.load_root()
+        self.smart_sleep(start)
+        return self.clearChoice(ROOT.getNextMove())
 
 
 if __name__ == "__main__":  # pragma: no cover
-    # p(list(combinations([1,2,3,4], 2)))
     multipaint.run(Bot)
