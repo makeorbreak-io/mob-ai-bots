@@ -6,6 +6,8 @@ const printBoard = (board) => console.error("board:\n",board.map(l => l.map( o =
 
 const surroundings = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
 
+let previousState = null;
+
 const getShufledDirections = () => {
 
   const a = surroundings;
@@ -131,6 +133,7 @@ const chooseAction = (player_id, state, board) => {
   const { height, width, colors, player_positions } = state;
   const [prow, pcolumn] = player_positions[player_id];
   const arrayDirections = getShufledDirections();
+
   
   let maxPoints= {root: -1,around:-1,shoot: -1};
   let chosenDirection=[0,0];
@@ -182,12 +185,47 @@ const chooseAction = (player_id, state, board) => {
  return [chosenAction, chosenDirection]; 
 }
 
+const isStuck = (state) => {
+  return previousState !== null && JSON.stringify(state.colors) === JSON.stringify(previousState.colors);
+};
+const beSmart = (state, player_id) => {
+  
+  const flatColors = state.colors.reduce( (acc,row) => [...acc,...row] ,[]);
+  const score = flatColors.reduce((acc,value) => {
+    if(value){
+      acc[value] = !acc[value] ? 1 : acc[value] +1; 
+      return acc;
+    }else{
+      return acc;
+    }
+  },{});
+  let maxValue = {key: '', score:0}
+  Object.keys(score).forEach( key =>{
+    const value = score[key];
+    if(value > maxValue.score){
+      maxValue.score = value;
+      maxValue.key = key;
+    }
+  });
+
+  if(maxValue.key === player_id){
+    return state.previous_actions[player_id];
+  }else {
+    return {type: "walk",direction: [0,0]};
+  }
+}
 class Megabot2000 {
   constructor(player_id) {
     this.player_id = player_id;
   }
 
   next_move(state) {
+
+    if(isStuck(state)){
+
+      previousState = state;
+      return beSmart(state, this.player_id);
+    }
 
     let board = state.colors.map((line,row) => line.map( (cell, column) => (calculateCellValue(this.player_id, state, [row,column], cell))));
 
@@ -197,6 +235,7 @@ class Megabot2000 {
 
     const [type, direction] = chooseAction(this.player_id, state, board);
 
+    previousState = state;
 
     return {
       type,
