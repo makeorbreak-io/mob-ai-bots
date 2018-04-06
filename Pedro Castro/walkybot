@@ -152,17 +152,14 @@ const chooseAction = (player_id, state, board) => {
         maxPoints = points;
         chosenDirection = dir;
         chosenAction = 'walk';
-
       }else if(points.root === maxPoints.root && points.shoot.value > maxPoints.shoot.value){
         maxPoints = points;
         chosenDirection = dir;
         chosenAction = 'walk';
-
       }else if(points.root === maxPoints.root && points.shoot.value === maxPoints.shoot.value && points.around > 0 && (points.around < maxPoints.around || maxPoints.around < 1) ){
         maxPoints = points;
         chosenDirection = dir;
         chosenAction = 'walk';
-
       }
 
     }
@@ -207,11 +204,10 @@ const beSmart = (state, player_id) => {
       maxValue.key = key;
     }
   });
-
   if(maxValue.key === player_id){
-    return state.previous_actions[player_id];
+    return state.previous_actions[state.previous_actions.length-1][player_id];
   }else {
-    return {type: "walk",direction: [0,0]};
+    return {type: "shoot",direction: getShufledDirections()[0]};
   }
 }
 class Megabot2000 {
@@ -222,9 +218,9 @@ class Megabot2000 {
   next_move(state) {
 
     if(isStuck(state)){
-
       previousState = state;
-      return beSmart(state, this.player_id);
+      const action = beSmart(state, this.player_id);
+      return action;
     }
 
     let board = state.colors.map((line,row) => line.map( (cell, column) => (calculateCellValue(this.player_id, state, [row,column], cell))));
