@@ -62,15 +62,12 @@ public class Bot implements multipaint.Bot {
                 if (state.colors[i][j] != null) {
                     if (state.colors[i][j].equals(this.playerId))
                         tot++;
-                    else if (state.colors[i][j] != null)
+                    else
                         tot--;
                 }
             }
         }
-        if (tot > 0)
-            return 1;
-        return 0;
-        //return tot;
+        return tot;
     }
 
     int[][] paintedInTurn = null;
@@ -82,7 +79,7 @@ public class Bot implements multipaint.Bot {
         int i = 0;
         int j = 0;
         for (; i < moves.length; i++) {
-            if (moves[i].type == "shoot" && rangeForShot(state, player, state.player_positions.get(player), moves[i].direction) == 1)
+            if (moves[i].type == "shoot" && rangeForShot(state, player, state.player_positions.get(player), moves[i].direction) == 0)
                 continue;
             if ((pos[0] + moves[i].direction[0]) >= 0 &&
                     (pos[0] + moves[i].direction[0]) < state.height &&
@@ -95,6 +92,17 @@ public class Bot implements multipaint.Bot {
             }
         }
         return a;
+    }
+
+    public boolean validMove(Board state, String player, Action action) {
+        int[] pos = state.player_positions.get(player);
+        if (action.type == "shoot" && rangeForShot(state, player, pos, action.direction) == 0)
+            return false;
+        int i = pos[0] + action.direction[0];
+        int j = pos[1] + action.direction[1];
+        if (i < 0 || i >= state.height || j < 0 || j >= state.width)
+            return false;
+        return true;
     }
 
     public int rangeForShot(Board state, String player, int[] pos, int[] direction) {
@@ -119,6 +127,8 @@ public class Bot implements multipaint.Bot {
     }
 
     public Board next(Board state, Map<String, Action> moves) {
+        long s = System.nanoTime();
+
         // Copy previous board. Don't worry about previous moves.
         Board next = new Board();
         next.turns_left = state.turns_left - 1;
@@ -128,7 +138,7 @@ public class Bot implements multipaint.Bot {
         for (int i = 0; i < next.colors.length; i++)
             System.arraycopy(state.colors[i], 0, next.colors[i], 0, next.colors[0].length);
         next.player_positions = new HashMap<>();
-        for (Map.Entry<String, int[]> playerPosition: state.player_positions.entrySet()) {
+        for (Map.Entry<String, int[]> playerPosition : state.player_positions.entrySet()) {
             int[] pos = new int[2];
             pos[0] = playerPosition.getValue()[0];
             pos[1] = playerPosition.getValue()[1];
@@ -136,10 +146,10 @@ public class Bot implements multipaint.Bot {
         }
 
         // Apply all movement actions.
-        for (Map.Entry<String, Action> move: moves.entrySet()) {
+        for (Map.Entry<String, Action> move : moves.entrySet()) {
             String player = move.getKey();
             Action action = move.getValue();
-            if (action.type == "walk") {
+            if (action.type.equals("walk")) {
                 int[] pos = next.player_positions.get(player);
                 pos[0] = Math.min(Math.max(pos[0] + action.direction[0], 0), next.height - 1);
                 pos[1] = Math.min(Math.max(pos[1] + action.direction[1], 0), next.width - 1);
@@ -158,7 +168,7 @@ public class Bot implements multipaint.Bot {
                 }
             }
         }
-        for (String player: removedPlayers) {
+        for (String player : removedPlayers) {
             moves.remove(player);
             next.player_positions.put(player, state.player_positions.get(player));
         }
@@ -166,13 +176,13 @@ public class Bot implements multipaint.Bot {
         // Keep track of squares painted this turn.
         if (paintedInTurn == null) {
             paintedInTurn = new int[next.height][next.width];
-            for (int i = 0; i < next.height; i++) {
-                Arrays.fill(paintedInTurn[i], state.turns_left);
-            }
+        }
+        for (int i = 0; i < next.height; i++) {
+            Arrays.fill(paintedInTurn[i], state.turns_left);
         }
 
         // Paint squares occupied by avatars.
-        for (Map.Entry<String, int[]> playerPosition: next.player_positions.entrySet()) {
+        for (Map.Entry<String, int[]> playerPosition : next.player_positions.entrySet()) {
             String player = playerPosition.getKey();
             int[] pos = playerPosition.getValue();
             next.colors[pos[0]][pos[1]] = player;
@@ -181,10 +191,10 @@ public class Bot implements multipaint.Bot {
 
         // Apply shooting actions.
         Map<String, Shot> shots = new HashMap<>();
-        for (Map.Entry<String, Action> move: moves.entrySet()) {
+        for (Map.Entry<String, Action> move : moves.entrySet()) {
             String player = move.getKey();
             Action action = move.getValue();
-            if (action.type == "shoot") {
+            if (action.type.equals("shoot")) {
                 Shot shot = new Shot();
                 shot.direction = action.direction;
                 shot.range = 0;
@@ -199,7 +209,7 @@ public class Bot implements multipaint.Bot {
         }
         while (!shots.isEmpty()) {
             // Advance all shots one square.
-            for (String player: shots.keySet()) {
+            for (String player : shots.keySet()) {
                 Shot shot = shots.get(player);
                 shot.position[0] += shot.direction[0];
                 shot.position[1] += shot.direction[1];
@@ -208,7 +218,7 @@ public class Bot implements multipaint.Bot {
 
             // Disable shots.
             Set<String> disabledShots = new HashSet<>();
-            for (String player: shots.keySet()) {
+            for (String player : shots.keySet()) {
                 Shot shot = shots.get(player);
                 if (!shot.disabled) {
                     if (shot.position[0] < 0 || shot.position[0] >= next.height || shot.position[1] < 0 ||
@@ -218,7 +228,7 @@ public class Bot implements multipaint.Bot {
                 }
                 if (!shot.disabled) {
                     for (String oPlayer : shots.keySet()) {
-                        if (player == oPlayer)
+                        if (player.equals(oPlayer))
                             continue;
                         Shot oShot = shots.get(oPlayer);
                         if (shot.position[0] == oShot.position[0] && shot.position[1] == oShot.position[1]) {
@@ -239,11 +249,12 @@ public class Bot implements multipaint.Bot {
                 if (shot.disabled)
                     disabledShots.add(player);
             }
-            for (String player: disabledShots)
+            for (String player : disabledShots) {
                 shots.remove(player);
+            }
 
             // Paint squares of remaining shots.
-            for (String player: shots.keySet()) {
+            for (String player : shots.keySet()) {
                 Shot shot = shots.get(player);
                 next.colors[shot.position[0]][shot.position[1]] = player;
                 paintedInTurn[shot.position[0]][shot.position[1]] = next.turns_left;
@@ -251,14 +262,17 @@ public class Bot implements multipaint.Bot {
 
             // Remove shots whose range have reached 0.
             Set<String> shotsFinalRange = new HashSet<>();
-            for (String player: shots.keySet()) {
+            for (String player : shots.keySet()) {
                 Shot shot = shots.get(player);
                 if (shot.range == 0)
                     shotsFinalRange.add(player);
             }
-            for (String player: shotsFinalRange)
+            for (String player : shotsFinalRange)
                 shots.remove(player);
         }
+
+        long e = System.nanoTime();
+        //System.err.println("Board update in " + (e - s) + "ns");
 
         return next;
     }
@@ -269,12 +283,12 @@ public class Bot implements multipaint.Bot {
 
     public long scoreForMove(Board state, Action action) {
         int[] pos = state.player_positions.get(playerId);
-        if (action.type == "shoot") {
+        if (action.type.equals("shoot")) {
             if (rangeForShot(state, playerId, pos, action.direction) == 1)
                 return 0;
             return rangeForShot(state, playerId, pos, action.direction) * 2;
         }
-        if (action.type == "walk") {
+        if (action.type.equals("walk")) {
             int[] n = new int[2];
             n[0] = pos[0] + action.direction[0];
             n[1] = pos[1] + action.direction[1];
@@ -301,9 +315,19 @@ public class Bot implements multipaint.Bot {
     }
 
     public Action nextMove(Board state) {
+        long s = System.nanoTime();
+
         // Extract all players.
-        if (this.players == null)
-            this.players = state.player_positions.keySet().toArray(new String[state.player_positions.size()]);
+        if (this.players == null) {
+            this.players = new String[state.player_positions.size()];
+            int i = 0;
+            this.players[i++] = playerId;
+            for (String player : state.player_positions.keySet()) {
+                if (player.equals(playerId))
+                    continue;
+                this.players[i++] = player;
+            }
+        }
 
         // Build all possible moves.
         if (moves == null) {
@@ -318,15 +342,40 @@ public class Bot implements multipaint.Bot {
             }
         }
 
+        Map<Action, Long> scores = new HashMap<>();
+
+        long e = System.nanoTime();
+
+        while (e - s < 400000000) {
+            for (int i = 0; i < moves.length; i++) {
+                if (validMove(state, playerId, moves[i])) {
+                    long prevScore = 0;
+                    if (scores.containsKey(moves[i]))
+                        prevScore = scores.get(moves[i]);
+                    Board next = state;
+                    do {
+                        Map<String, Action> actions = new HashMap<>();
+                        for (String player : this.players) {
+                            if (player == playerId && next.turns_left == state.turns_left)
+                                actions.put(player, moves[i]);
+                            else
+                                actions.put(player, randomMove(next, player));
+                        }
+                        next = next(next, actions);
+                    } while (next.turns_left > 0 && (state.turns_left - next.turns_left) < 10);
+                    prevScore += score(next);
+                    scores.put(moves[i], prevScore);
+                }
+            }
+            e = System.nanoTime();
+        }
+
         Action bestAction = null;
         long best = Long.MIN_VALUE;
 
-        for (int i = 0; i < moves.length; i++) {
-            long s = scoreForMove(state, moves[i]);
-            System.err.println(moves[i].type + " " + moves[i].direction[0] + " " + moves[i].direction[1] + " -> " + s);
-            if (s > best) {
-                best = s;
-                bestAction = moves[i];
+        for (Map.Entry<Action, Long> score: scores.entrySet()) {
+            if (score.getValue() > best) {
+                bestAction = score.getKey();
             }
         }
 
