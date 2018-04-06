@@ -342,6 +342,8 @@ public class Bot implements multipaint.Bot {
             }
         }
 
+        Action bestAction = null;
+        long bestScore = Long.MIN_VALUE;
         Map<Action, Long> scores = new HashMap<>();
 
         long e = System.nanoTime();
@@ -349,34 +351,34 @@ public class Bot implements multipaint.Bot {
         while (e - s < 400000000) {
             for (int i = 0; i < moves.length; i++) {
                 if (validMove(state, playerId, moves[i])) {
-                    long prevScore = 0;
-                    if (scores.containsKey(moves[i]))
-                        prevScore = scores.get(moves[i]);
-                    Board next = state;
-                    do {
-                        Map<String, Action> actions = new HashMap<>();
-                        for (String player : this.players) {
-                            if (player == playerId && next.turns_left == state.turns_left)
-                                actions.put(player, moves[i]);
-                            else
-                                actions.put(player, randomMove(next, player));
-                        }
-                        next = next(next, actions);
-                    } while (next.turns_left > 0 && (state.turns_left - next.turns_left) < 10);
-                    prevScore += score(next);
-                    scores.put(moves[i], prevScore);
+                    Long totScore = scores.get(moves[i]);
+                    if (totScore == null)
+                        totScore = 0l;
+                        Board next = state;
+                        do {
+                            Map<String, Action> actions = new HashMap<>();
+                            for (String player : this.players) {
+                                if (player == playerId && next.turns_left == state.turns_left)
+                                    actions.put(player, moves[i]);
+                                else
+                                    actions.put(player, randomMove(next, player));
+                            }
+                            next = next(next, actions);
+                        } while (next.turns_left > 0 && (state.turns_left - next.turns_left) < 10);
+                        totScore += score(next);
+                    scores.put(moves[i], totScore);
                 }
             }
             e = System.nanoTime();
         }
 
-        Action bestAction = null;
-        long best = Long.MIN_VALUE;
-
         for (Map.Entry<Action, Long> score: scores.entrySet()) {
-            if (score.getValue() > best) {
-                bestAction = score.getKey();
-            }
+           Action action = score.getKey();
+           Long ss = score.getValue();
+           if (ss > bestScore || bestAction == null) {
+               bestAction = action;
+               bestScore = ss;
+           }
         }
 
         return bestAction;
