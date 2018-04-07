@@ -7,7 +7,7 @@ import java.util.LinkedList;
 import java.util.Random;
 import java.util.Set;
 
-public class MakeLoveNotWar implements multipaint.Bot {
+public class Bot implements multipaint.Bot {
     private String playerId;
     public Random r;
 
