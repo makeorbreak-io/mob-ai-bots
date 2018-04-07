@@ -109,6 +109,23 @@ public class Bot implements multipaint.Bot {
       board.turns_left++;
     }
 
+    Action getLockedAction() {
+      if(board.previous_actions.length < 5) return null;
+
+      Map<String, Action> act = board.previous_actions[board.previous_actions.length - 1];
+      for(int i = 1; i < 5; i++) {
+        Map<String, Action> prev = board.previous_actions[board.previous_actions.length - 1 - i];
+        if(!act.keySet().equals(prev.keySet())) return null;
+
+        for(Map.Entry<String, Action> e : act.entrySet()) {
+          Action prevAct = prev.get(e.getKey());
+          if(!e.getValue().type.equals(prevAct.type) || !Arrays.equals(e.getValue().direction, prevAct.direction))
+            return null;
+        }
+      }
+      return act.get(playerId);
+    }
+
     private boolean isValidMove(int[] pos, int[] dir) {
       return pos[0] + dir[0] >= 0 && pos[0] + dir[0] < board.height &&
           pos[1] + dir[1] >= 0 && pos[1] + dir[1] < board.width;
@@ -170,6 +187,7 @@ public class Bot implements multipaint.Bot {
     Score bestScore = new Score(0, 0);
     Action a = new Action();
     State st = new State(board, playerId);
+    Action lockedAct = st.getLockedAction();
     if (DEBUG) {
       System.err.println("player: " + playerId);
       System.err.println("start (" + st.score + ")");
@@ -177,6 +195,9 @@ public class Bot implements multipaint.Bot {
     for (int[] dir : ActionDirections) {
       if (st.isInvalidAction(dir)) continue;
       for (String type : ActionTypes) {
+        if(lockedAct != null && (type.equals("walk") || Arrays.equals(dir, lockedAct.direction)))
+          continue;
+
         st.doAction(type, dir);
         if (DEBUG) {
           System.err.println("1. " + type + " [" + dir[0] + ", " + dir[1] + "] (score: " + st.score + ")");
