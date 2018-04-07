@@ -110,8 +110,8 @@ public class Bot implements multipaint.Bot {
     }
 
     private boolean isValidMove(int[] pos, int[] dir) {
-      return pos[0] + dir[0] >= 0 && pos[0] + dir[0] < board.width &&
-          pos[1] + dir[1] >= 0 && pos[1] + dir[1] < board.height;
+      return pos[0] + dir[0] >= 0 && pos[0] + dir[0] < board.height &&
+          pos[1] + dir[1] >= 0 && pos[1] + dir[1] < board.width;
     }
 
     private void paint(ActionResult res, int[] pos) {
