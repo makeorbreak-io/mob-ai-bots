@@ -161,7 +161,7 @@ class State:
     # given a tuple of moves for the players index is 1 to n (can use self.player_ids)
     # apply those moves and return a new state
     # if load scores is True then loadPlayerScores is called
-    def getNewState(self, actions, load_scores=True):
+    def getNewState(self, actions):
         # create a copy of the current state
         state = deepcopy(self)
         # otherwise singleton does not work, because the moves were only valid for the previous state
@@ -245,8 +245,7 @@ class State:
 
             k += 1
 
-        if load_scores:
-            state.loadPlayerScores()
+        # state.loadPlayerScores()
 
         return state
 
@@ -256,7 +255,29 @@ class State:
         my_squares = self.scores[self.me]
         empty_squares = self.scores[-1]  # ignore objects
         opponents_squares = total_squares - my_squares - empty_squares
-        return (my_squares - opponents_squares) / total_squares
+        return 8 * my_squares - 2 * opponents_squares
+        # return (my_squares - opponents_squares) / total_squares
+        # TODO: heuristic based on closeness od painted cells to center, the closer, the better,
+        # return 0.6 * my_squares - 0.3 * opponents_squares - 0.1 * empty_squares
+
+    # given the current game state and a previous state, calculate the value of the next state
+    def getGreedyHeuristic(self, prev_state):
+        totalSquares = self.rows * self.columns
+
+        prev_empty = prev_state.scores[-1]
+        next_empty = self.scores[-1]
+
+        prev_squares = prev_state.scores[self.me]  # my previous score
+        next_squares = self.scores[self.me]  # my current score
+
+        prev_opponents = totalSquares - prev_squares
+        next_opponents = totalSquares - next_squares
+
+        # value with more cells of different colors
+
+        return 9 * (next_squares - prev_squares) - 1 * (next_opponents - prev_opponents)
+        # opponents = totalSquares - mySquares
+        # return 0.6 * mySquares - 0.4 * opponents
 
     # given a history of states, return the winning player
     def getWinner(self):
@@ -295,9 +316,9 @@ ROOT = None  # the search tree root
 # very important: Node.state.moves holds all the moves that have not been expanded
 # Node.children holds all the Nodes resulting from poping a move from Node.state.moves
 class Node(object):
-    MAX_DEPTH = 5  # max depth for the simulation
-    C = 1.4  # learning rate
-    SAMPLES = 1  # number of samples to make for each random_simulation
+    MAX_DEPTH = 4  # max depth for the simulation
+    C = 1.4  # learning rate, bigger means more exploration
+    SAMPLES = 2  # number of samples to make for each random_simulation
     ID = 0
 
     def __init__(self, state, parent=None, move=None):
@@ -309,17 +330,21 @@ class Node(object):
         self.move = move  # the move made that led to this state
         self.expanded = False
         self.state.loadAllMoves()  # load all the possible moves only once per Node
+        self.state.loadPlayerScores()
         self.heuristic = 0  # node value evaluated by heuristic function for the board
         # debug stuff
         self.id = Node.ID
         Node.ID += 1
         # backprop if applicable
         if len(self.state.scores) > 0:
-            self.backprop(self.state.iWon(), self.state.getHeuristic())
+            if self.parent is None:
+                self.backprop(self.state.iWon(), self.state.getHeuristic())
+            else:
+                self.backprop(self.state.iWon(), self.state.getGreedyHeuristic(parent.state))
 
     # TODO: use this, but be careful not to delete the new root and its descendants
     def __del__(self):
-        for child in list(self.children.keys()):#[:]:
+        for child in list(self.children.keys()):  # [:]:
             if child != ROOT:
                 del self.children[child]
 
@@ -353,11 +378,26 @@ class Node(object):
     def getValue(self):
         return self.wins / self.plays
 
+    # given a node, split redundant and non-redundant children in a tuple
+    def getNonRedundantChildren(self):
+        red = []
+        non_red = []
+        for c in self.children.values():
+            if c.state.scores[c.state.me] == self.state.scores[self.state.me]:
+                red.append(c)
+            else:
+                non_red.append(c)
+        return red, non_red
+
     # get the child with the highest Value
     # MUST be expanded, otherwise max fails for empty list
     def getBestValueChild(self):
+        red, non_red = self.getNonRedundantChildren()
+        if len(non_red) == 0:
+            non_red = red
         # return max(self.children.values(), key=lambda c: c.getValue())
-        return max(self.children.values(), key=lambda c: c.heuristic)
+        # return max(self.children.values(), key=lambda c: c.heuristic * c.getValue())
+        return max(non_red, key=lambda c: c.heuristic)
 
     # get the child with the highest Value
     # MUST be expanded, otherwise max fails for empty list
@@ -463,12 +503,9 @@ class Bot(object):
 
     # make this move last as long as possible
     def smart_sleep(self, start):
-        max_sleep = 0.46 - (default_timer() - start)
+        max_sleep = 0.44 - (default_timer() - start)
         sleep(max_sleep)
-        # while (default_timer() - start) < 0.45:
-            # sleep(0.01)
         # p("start = %.4fms, max_sleep = %.4fms, total: %.4fms, " % (start / 1000, max_sleep, (default_timer() - start)))
-        # p("WOKEN UP FROM SLEEP")
 
     def clearChoice(self, c):  # pragma: no cover
         c["direction"] = c["direction"].tolist()
@@ -485,3 +522,6 @@ class Bot(object):
 
 if __name__ == "__main__":  # pragma: no cover
     multipaint.run(Bot)
+
+
+# TODO: consider number of painted cells instead of just win ratio, maybe painted cells ratio or other heuristic
