@@ -8,40 +8,10 @@ public class Bot implements multipaint.Bot {
     private String playerId;
     private String[] players = null;
     public Random r;
-
-    public class Shot {
-        int range;
-        int[] direction;
-        int[] position;
-        boolean disabled;
-    }
-
-    public class MyAction {
-        String type;
-        int[] direction;
-
-        @Override
-        public int hashCode() {
-            int s = 1;
-            if (type.equals("shoot"))
-                s = 2;
-            return s + 31 * (this.direction[0] + 2) + 31 * 31 * (this.direction[1] + 2);
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj instanceof MyAction) {
-                MyAction action = (MyAction) obj;
-                return this.type.equals(action.type) && this.direction[0] == action.direction[0] && this.direction[1] == action.direction[1];
-            }
-            return false;
-        }
-
-        public MyAction(Action a) {
-            this.type = a.type;
-            this.direction = a.direction;
-        }
-    }
+    int[][] paintedInTurn = null;
+    private Action[] moves = null;
+    private List<Integer> scores = new ArrayList<>();
+    private List<Map<String, int[]>> positions = new ArrayList<>();
 
     public static String[] ActionTypes = new String[]{"shoot", "walk"};
     public static int[][] ActionDirections = new int[][]{
@@ -70,8 +40,12 @@ public class Bot implements multipaint.Bot {
         return tot;
     }
 
-    int[][] paintedInTurn = null;
-    private Action[] moves = null;
+    public class Shot {
+        int range;
+        int[] direction;
+        int[] position;
+        boolean disabled;
+    }
 
     public Action randomMove(Board state, String player) {
         Action a = moves[0];
@@ -94,8 +68,34 @@ public class Bot implements multipaint.Bot {
         return a;
     }
 
+    int STUCK_MOVES = 3;
+
     public boolean validMove(Board state, String player, Action action) {
+        // Check if we are stuck using this move.
+        int currentScore = scores.get(scores.size() - 1);
         int[] pos = state.player_positions.get(player);
+        if (currentScore < 0 && scores.size() > STUCK_MOVES) {
+            boolean stuck = true;
+            for (int j = scores.size() - STUCK_MOVES; j < scores.size() - 1; j++) {
+                if (scores.get(j) != currentScore) {
+                    stuck = false;
+                    break;
+                }
+                int[] prevPos = positions.get(j).get(playerId);
+                if (pos[0] != prevPos[0] || pos[1] != prevPos[1]) {
+                    stuck = false;
+                    break;
+                }
+            }
+            if (stuck) {
+                for (int j = state.previous_actions.length - STUCK_MOVES + 1; j < state.previous_actions.length; j++) {
+                    Action act = state.previous_actions[j].get(playerId);
+                    if (act.type == action.type && act.direction[0] == action.direction[0] && act.direction[1] == action.direction[1])
+                        return false;
+                }
+            }
+        }
+
         if (action.type == "shoot" && rangeForShot(state, player, pos, action.direction) == 0)
             return false;
         int i = pos[0] + action.direction[0];
@@ -127,7 +127,7 @@ public class Bot implements multipaint.Bot {
     }
 
     public Board next(Board state, Map<String, Action> moves) {
-        long s = System.nanoTime();
+        //long s = System.nanoTime();
 
         // Copy previous board. Don't worry about previous moves.
         Board next = new Board();
@@ -197,7 +197,6 @@ public class Bot implements multipaint.Bot {
             if (action.type.equals("shoot")) {
                 Shot shot = new Shot();
                 shot.direction = action.direction;
-                shot.range = 0;
                 shot.position = new int[2];
                 int[] pos = next.player_positions.get(player);
                 shot.position[0] = pos[0];
@@ -271,47 +270,10 @@ public class Bot implements multipaint.Bot {
                 shots.remove(player);
         }
 
-        long e = System.nanoTime();
+        //long e = System.nanoTime();
         //System.err.println("Board update in " + (e - s) + "ns");
 
         return next;
-    }
-
-    public int chebyshevDistance(int[] p1, int[] p2) {
-        return Math.max(Math.abs(p1[0] - p2[0]), Math.abs(p1[1] - p2[1]));
-    }
-
-    public long scoreForMove(Board state, Action action) {
-        int[] pos = state.player_positions.get(playerId);
-        if (action.type.equals("shoot")) {
-            if (rangeForShot(state, playerId, pos, action.direction) == 1)
-                return 0;
-            return rangeForShot(state, playerId, pos, action.direction) * 2;
-        }
-        if (action.type.equals("walk")) {
-            int[] n = new int[2];
-            n[0] = pos[0] + action.direction[0];
-            n[1] = pos[1] + action.direction[1];
-            if (n[0] <= 0 || n[0] >= state.height - 1 || n[1] <= 0 || n[1] >= state.width - 1)
-                return 0;
-            long tot = 0;
-            if (state.colors[n[0]][n[1]] != null && !state.colors[n[0]][n[1]].equals(playerId))
-                tot += 30;
-            else if (state.colors[n[0]][n[1]] == null)
-                tot += 10;
-            int currD = 0;
-            int nextD = 0;
-            for (int k = 0; k < players.length; k++) {
-                if (players[k].equals(playerId))
-                    continue;
-                currD += chebyshevDistance(pos, state.player_positions.get(players[k]));
-                nextD += chebyshevDistance(n, state.player_positions.get(players[k]));
-            }
-            if (nextD < currD)
-                tot += 20;
-            return tot;
-        }
-        return 0;
     }
 
     public Action nextMove(Board state) {
@@ -342,44 +304,52 @@ public class Bot implements multipaint.Bot {
             }
         }
 
+        // Fill in scores and previous positions.
+        scores.add(score(state));
+        positions.add(state.player_positions);
+
         Action bestAction = null;
         long bestScore = Long.MIN_VALUE;
         Map<Action, Long> scores = new HashMap<>();
 
         long e = System.nanoTime();
+        long nSims = 0;
 
-        while (e - s < 400000000) {
+        while (e - s < 450000000) {
             for (int i = 0; i < moves.length; i++) {
                 if (validMove(state, playerId, moves[i])) {
                     Long totScore = scores.get(moves[i]);
                     if (totScore == null)
                         totScore = 0l;
-                        Board next = state;
-                        do {
-                            Map<String, Action> actions = new HashMap<>();
-                            for (String player : this.players) {
-                                if (player == playerId && next.turns_left == state.turns_left)
-                                    actions.put(player, moves[i]);
-                                else
-                                    actions.put(player, randomMove(next, player));
-                            }
-                            next = next(next, actions);
-                        } while (next.turns_left > 0 && (state.turns_left - next.turns_left) < 10);
-                        totScore += score(next);
+                    Board next = state;
+                    do {
+                        Map<String, Action> actions = new HashMap<>();
+                        for (String player : this.players) {
+                            if (player.equals(playerId) && next.turns_left == state.turns_left)
+                                actions.put(player, moves[i]);
+                            else
+                                actions.put(player, randomMove(next, player));
+                        }
+                        next = next(next, actions);
+                    } while (next.turns_left > 0 && (state.turns_left - next.turns_left) < 10);
+                    totScore += score(next);
                     scores.put(moves[i], totScore);
+                    nSims++;
                 }
             }
             e = System.nanoTime();
         }
 
-        for (Map.Entry<Action, Long> score: scores.entrySet()) {
-           Action action = score.getKey();
-           Long ss = score.getValue();
-           if (ss > bestScore || bestAction == null) {
-               bestAction = action;
-               bestScore = ss;
-           }
+        for (Map.Entry<Action, Long> score : scores.entrySet()) {
+            Action action = score.getKey();
+            Long ss = score.getValue();
+            if (ss > bestScore || bestAction == null) {
+                bestAction = action;
+                bestScore = ss;
+            }
         }
+
+        //System.err.println("Ran " + nSims + " simulations.");
 
         return bestAction;
     }
