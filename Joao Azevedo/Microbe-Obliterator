@@ -90,7 +90,7 @@ public class Bot implements multipaint.Bot {
             if (stuck) {
                 for (int j = state.previous_actions.length - STUCK_MOVES + 1; j < state.previous_actions.length; j++) {
                     Action act = state.previous_actions[j].get(playerId);
-                    if (act.type == action.type && act.direction[0] == action.direction[0] && act.direction[1] == action.direction[1])
+                    if (act.direction[0] == action.direction[0] && act.direction[1] == action.direction[1])
                         return false;
                 }
             }
@@ -315,7 +315,7 @@ public class Bot implements multipaint.Bot {
         long e = System.nanoTime();
         long nSims = 0;
 
-        while (e - s < 450000000) {
+        while (e - s < 400000000) {
             for (int i = 0; i < moves.length; i++) {
                 if (validMove(state, playerId, moves[i])) {
                     Long totScore = scores.get(moves[i]);
