@@ -172,6 +172,17 @@ public class Bot implements multipaint.Bot {
         return largest;
     }
 
+    public int paintableNeighbors(Board state) {
+        int acc = 0;
+        int[] currPos = myPosition(state);
+        for (int[] ActionDirection : ActionDirections) {
+            if (!outOfBounds(state, currPos[0], currPos[1]) && !myColor(state.colors[currPos[0]][currPos[1]])) {
+                acc++;
+            }
+        }
+        return acc;
+    }
+
     // Secret sauce
     class Weights {
         public double myScoreWeight = 1.0;
@@ -179,6 +190,9 @@ public class Bot implements multipaint.Bot {
         public double totalTailWeight = 0.0;
         public double effectiveTailWeight = 0.1;
         public double paintTailWeight = 0.2;
+        public double neighborsWeight = 0.0;
+        public double epsilon = 0.0;
+        public double gamma = 0.0;
 
         private double readEnvVar(String envVar, double defaultValue) {
             String envResult = System.getenv(envVar);
@@ -187,11 +201,14 @@ public class Bot implements multipaint.Bot {
         }
 
         public Weights() {
-            myScoreWeight = readEnvVar("MY_SCORE", 1.0);
-            theirScoreWeight = readEnvVar("THEIR_SCORE", -1.0);
-            totalTailWeight = readEnvVar("TOTAL_TAIL", 0.0);
-            effectiveTailWeight = readEnvVar("EFFECTIVE_TAIL", 0.1);
-            paintTailWeight = readEnvVar("PAINT_TAIL", 0.2);
+            myScoreWeight = readEnvVar("MY_SCORE", 0.222);
+            theirScoreWeight = readEnvVar("THEIR_SCORE", -0.008);
+            totalTailWeight = readEnvVar("TOTAL_TAIL", 0.827);
+            effectiveTailWeight = readEnvVar("EFFECTIVE_TAIL", 0.531);
+            paintTailWeight = readEnvVar("PAINT_TAIL", 0.754);
+            neighborsWeight = readEnvVar("NEIGHBORS", 0.047);
+            epsilon = readEnvVar("EPSILON", 0.0);
+            gamma = readEnvVar("GAMMA", 0.958);
             System.err.println("Using Weights: " + toString());
         }
 
@@ -201,7 +218,8 @@ public class Bot implements multipaint.Bot {
                     theirScoreWeight + ", " +
                     totalTailWeight + ", " +
                     effectiveTailWeight + ", " +
-                    paintTailWeight + ")";
+                    paintTailWeight + ", " +
+                    neighborsWeight + ") / [" + epsilon + ", " + gamma + "]";
         }
     }
 
@@ -214,25 +232,49 @@ public class Bot implements multipaint.Bot {
                 weights.theirScoreWeight*scores.theirs +
                 weights.totalTailWeight*tailScores.total +
                 weights.effectiveTailWeight*tailScores.effective +
-                weights.paintTailWeight*tailScores.paint;
+                weights.paintTailWeight*tailScores.paint +
+                weights.neighborsWeight*paintableNeighbors(state);
+    }
+
+    class SearchResult {
+      public Action action;
+      public double value;
+
+      public SearchResult(Action _action, double _value) {
+        action = _action;
+        value = _value;
+      }
+    }
+
+    public SearchResult bestAction(Board state, int depth) {
+      Action[] actions = possibleActions(state);
+      SearchResult best = new SearchResult(actions[0], Double.NEGATIVE_INFINITY);
+      for (Action action : actions) {
+        Board next = nextState(state, action);
+        double expectedValue = value(next);
+        if (depth > 0 && weights.gamma > 0) {
+          double childrenValue = bestAction(next, depth - 1).value;
+          expectedValue += weights.gamma * (childrenValue - expectedValue);
+        }
+        if (expectedValue > best.value) {
+          best.action = action;
+          best.value = expectedValue;
+        } else if (expectedValue == best.value && best.action.type.equals("shoot") && this.r.nextBoolean()){
+          best.action = action;
+          best.value = expectedValue;
+        }
+      }
+      return best;
+    }
+
+    public Action randomAction(Board state) {
+        Action[] actions = possibleActions(state);
+        return actions[this.r.nextInt(actions.length)];
     }
 
     public Action nextMove(Board state) {
-        Action[] actions = possibleActions(state);
-        double bestValue = Double.NEGATIVE_INFINITY;
-        Action bestAction = actions[0];
-        for (Action action : actions) {
-            double expectedValue = value(nextState(state, action));
-            if (expectedValue > bestValue) {
-                bestValue = expectedValue;
-                bestAction = action;
-            } else if (expectedValue == bestValue && bestAction.type.equals("shoot") && this.r.nextBoolean()){
-                bestValue = expectedValue;
-                bestAction = action;
-            }
-        }
-
-        return bestAction;
+        if (r.nextDouble() < weights.epsilon) return randomAction(state);
+        else return bestAction(state, 2).action;
     }
 
     public static void main(String[] args) {
