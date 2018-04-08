@@ -2,10 +2,7 @@ import multipaint.Action;
 import multipaint.Board;
 import multipaint.Runner;
 
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 
 public class Bot implements multipaint.Bot {
     private String playerId;
@@ -201,14 +198,14 @@ public class Bot implements multipaint.Bot {
         }
 
         public Weights() {
-            myScoreWeight = readEnvVar("MY_SCORE", 0.222);
-            theirScoreWeight = readEnvVar("THEIR_SCORE", -0.008);
-            totalTailWeight = readEnvVar("TOTAL_TAIL", 0.827);
-            effectiveTailWeight = readEnvVar("EFFECTIVE_TAIL", 0.531);
-            paintTailWeight = readEnvVar("PAINT_TAIL", 0.754);
-            neighborsWeight = readEnvVar("NEIGHBORS", 0.047);
+            myScoreWeight = readEnvVar("MY_SCORE", 0.921);
+            theirScoreWeight = readEnvVar("THEIR_SCORE", -0.491);
+            totalTailWeight = readEnvVar("TOTAL_TAIL", -0.200);
+            effectiveTailWeight = readEnvVar("EFFECTIVE_TAIL", -0.188);
+            paintTailWeight = readEnvVar("PAINT_TAIL", 0.200);
+            neighborsWeight = readEnvVar("NEIGHBORS", 0.293);
             epsilon = readEnvVar("EPSILON", 0.0);
-            gamma = readEnvVar("GAMMA", 0.958);
+            gamma = readEnvVar("GAMMA", 0.717);
             System.err.println("Using Weights: " + toString());
         }
 
@@ -237,44 +234,55 @@ public class Bot implements multipaint.Bot {
     }
 
     class SearchResult {
-      public Action action;
-      public double value;
+        public Action action;
+        public double value;
 
-      public SearchResult(Action _action, double _value) {
-        action = _action;
-        value = _value;
-      }
+        public SearchResult(Action _action, double _value) {
+            action = _action;
+            value = _value;
+        }
     }
 
-    public SearchResult bestAction(Board state, int depth) {
-      Action[] actions = possibleActions(state);
-      SearchResult best = new SearchResult(actions[0], Double.NEGATIVE_INFINITY);
-      for (Action action : actions) {
-        Board next = nextState(state, action);
-        double expectedValue = value(next);
-        if (depth > 0 && weights.gamma > 0) {
-          double childrenValue = bestAction(next, depth - 1).value;
-          expectedValue += weights.gamma * (childrenValue - expectedValue);
+    public SearchResult[] bestActions(Board state, int depth) {
+        Action[] actions = possibleActions(state);
+        SearchResult[] results = new SearchResult[actions.length];
+        //SearchResult best = new SearchResult(actions[0], Double.NEGATIVE_INFINITY);
+        for (int i = 0; i < actions.length; ++i) {
+            Action action = actions[i];
+            Board next = nextState(state, action);
+            double expectedValue = value(next);
+            if (depth > 0 && weights.gamma > 0) {
+                double childrenValue = bestActions(next, depth - 1)[0].value;
+                expectedValue += weights.gamma * (childrenValue - expectedValue);
+            }
+            results[i] = new SearchResult(action, expectedValue);
         }
-        if (expectedValue > best.value) {
-          best.action = action;
-          best.value = expectedValue;
-        } else if (expectedValue == best.value && best.action.type.equals("shoot") && this.r.nextBoolean()){
-          best.action = action;
-          best.value = expectedValue;
-        }
-      }
-      return best;
+        Arrays.sort(results, new Comparator<SearchResult>() {
+            @Override
+            public int compare(SearchResult o1, SearchResult o2) {
+                return (int)Math.signum(o2.value - o1.value);
+            }
+        });
+        return results;
     }
 
     public Action randomAction(Board state) {
-        Action[] actions = possibleActions(state);
-        return actions[this.r.nextInt(actions.length)];
+        SearchResult[] results = bestActions(state, 2);
+        double totalValue = 0.0;
+        for (SearchResult result: results) {
+            totalValue += result.value;
+        }
+        double rand = this.r.nextDouble() * totalValue;
+        for (SearchResult result: results) {
+            rand -= result.value;
+            if (rand <= 0) return result.action;
+        }
+        return results[results.length - 1].action;
     }
 
     public Action nextMove(Board state) {
         if (r.nextDouble() < weights.epsilon) return randomAction(state);
-        else return bestAction(state, 2).action;
+        else return bestActions(state, 2)[0].action;
     }
 
     public static void main(String[] args) {
