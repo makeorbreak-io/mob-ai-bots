@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
 using mob_ai_csharp.multipaint;
 using Newtonsoft.Json;
@@ -207,6 +206,23 @@ namespace mob_ai_csharp
             var directionFuncs = GetDirectionsFuncs();
             directionFuncs.Reverse();
             return directionFuncs;
+        }
+    }
+
+    public class Point
+    {
+        public int X { get; set; }
+
+        public int Y { get; set; }
+
+        public Point()
+        {
+        }
+
+        public Point(int x, int y)
+        {
+            this.X = x;
+            this.Y = y;
         }
     }
 }
