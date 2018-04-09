@@ -46,27 +46,19 @@ namespace mob_ai_csharp
         {
             myCurrentPos = new Point(boardState.player_positions[this.PlayerId][0], boardState.player_positions[this.PlayerId][1]);
 
-            var directions = GetDirectionsFuncs();
+            var atackMove = GetAttackMove(boardState);
 
-            for (int i = 0; i < directions.Count; i++)
+            if (atackMove != null)
             {
-                var x = directions[i](myCurrentPos);
-
-                if (x.X >= 0 && x.Y >= 0 && x.X < boardState.width && x.Y < boardState.height)
-                {
-                    return new Move()
-                    {
-                        Direction = ActionDirections[i],
-                        Type = ActionTypes[1],
-                    };
-                }
+                Console.Error.WriteLine("Attack");
+                return atackMove;
             }
 
-            return new Move()
-            {
-                Type = ActionTypes[R.Next(2)],
-                Direction = ActionDirections[R.Next(8)],
-            };
+            var point2go = BestMovePoint(boardState);
+
+            Console.Error.WriteLine("Move");
+
+            return GetDirectionForPoint(point2go);
         }
 
         private Move GetDirectionForPoint(Point point2Go)
@@ -81,8 +73,8 @@ namespace mob_ai_csharp
             {
                 var newPosition = directions[i](myCurrentPos);
 
-                var distance = Math.Sqrt(Math.Pow(point2Go.X - newPosition.X, 2) +
-                                         Math.Pow(point2Go.Y - newPosition.Y, 2));
+                var distance = Math.Sqrt(Math.Pow(point2Go.Y - newPosition.X, 2) +
+                                         Math.Pow(point2Go.X - newPosition.Y, 2));
 
                 if (minDistance > distance)
                 {
@@ -132,7 +124,7 @@ namespace mob_ai_csharp
 
             var count = Count(boardState, myCurrentPos);
 
-            var revesedMoves = ActionDirections;
+            var revesedMoves = new List<List<int>>(ActionDirections);
             revesedMoves.Reverse();
 
             for (int i = 0; i < count.Count; i++)
@@ -157,8 +149,7 @@ namespace mob_ai_csharp
             var board = boardState.colors;
 
             // Check if X and Y are Qol
-            // TODO: plz change this
-            var myColor = board[0][0];
+            var myColor = board[myCurrentPos.X][myCurrentPos.Y];
 
             var directions2Check = GetDirectionsFuncs();
             var reversedDirections = GetDirectionsFuncsReversed();
