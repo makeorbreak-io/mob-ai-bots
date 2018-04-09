@@ -18,7 +18,7 @@ namespace mob_ai_csharp
             new List<int>{ 1, -1}, // ^-->
             new List<int>{-1,  0}, // <-
             new List<int>{ 1,  0}, // ->
-            new List<int>{ 1,  1}, // v-<-
+            new List<int>{ -1,  1}, // v-<-
             new List<int>{ 0,  1}, // v-
             new List<int>{ 1,  1}, // v-->
         };
