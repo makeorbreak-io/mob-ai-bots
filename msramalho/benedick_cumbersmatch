@@ -485,7 +485,7 @@ class Node(object):
         # p(ratio)
 
         # return 1 * prev_squares + 10 * (next_squares - prev_squares) - 1 * (next_opponents - prev_opponents) - 1 / (totalSquares - next_empty) * ratio
-        return 1 * prev_squares + 10 * (next_squares - prev_squares) - 1 * (next_opponents - prev_opponents) + 2 * ratio
+        return 1 * prev_squares + 10 * (next_squares - prev_squares) - 1 * (next_opponents - prev_opponents) + 1.4 * ratio
         # opponents = totalSquares - mySquares
         # return 0.6 * mySquares - 0.4 * opponents
 
