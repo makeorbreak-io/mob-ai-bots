@@ -1,0 +1,153 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using mob_ai_csharp.multipaint;
+
+namespace mob_ai_csharp
+{
+    public class Bot : IBot
+    {
+        public List<string> ActionTypes = new List<string>() { "shoot", "walk" };
+
+        public List<List<int>> ActionDirections = new List<List<int>>()
+        {
+            new List<int>{-1, -1},   //UPLEFT
+            new List<int>{ 0, -1},   //UP
+            new List<int>{ 1, -1},   //UPRIGHT
+            new List<int>{-1,  0},   //LEFT
+            new List<int>{ 1,  0},   //RIGHT
+            new List<int>{-1,  1},   //DOWNLEFT
+            new List<int>{ 0,  1},   //DOWN
+            new List<int>{ 1,  1},   //DOWNRIGHT
+        };
+
+        private string PlayerId;
+        public Random R;
+
+        private static void Main(string[] args)
+        {
+            Runner.Run(new Bot());
+        }
+
+        public void SetPlayerId(string playerId)
+        {
+            this.PlayerId = playerId;
+            this.R = new Random();
+        }
+
+        public Move NextMove(Board boardState)
+        {
+            Move move = new Move();
+
+            move.Type = this.ActionTypes[R.Next(2)];
+            move.Direction = this.ActionDirections[this.R.Next(8)];
+
+            // k
+
+            int x;
+            (move, x) = GetBestMove(boardState, 1);
+
+            return move;
+        }
+
+        public (Move, int) GetBestMove(Board board, int plays)
+        {
+            int bestScore = 0;
+            Move bestMove = null;
+            foreach (var action in ActionTypes)
+            {
+                foreach (var direction in ActionDirections)
+                {
+                    var newBoard = GetNewBoard(board, action, direction);
+                    int score;
+                    if (plays <= 1)
+                    {
+                        score = GetScoreDifference(newBoard);
+                    }
+                    else
+                    {
+                        Move move;
+                        (move, score) = GetBestMove(newBoard, plays - 1);
+                    }
+
+                    if (bestMove == null || bestScore < score)
+                    {
+                        bestScore = score;
+                        bestMove = new Move { Direction = direction, Type = action };
+                    }
+                }
+            }
+
+            return (bestMove, bestScore);
+        }
+
+        private Board GetNewBoard(Board initialBoard, string action, List<int> direction)
+        {
+            var myPosition = initialBoard.player_positions[this.PlayerId];
+            var board = CloneBoard(initialBoard);
+
+            var positionToConquer = new List<int> { myPosition[0] + direction[0], myPosition[1] + direction[1] };
+
+            if (IsValidPosition(positionToConquer, board) && IsFreePosition(positionToConquer, board))
+            {
+                board.colors[positionToConquer[0]][positionToConquer[1]] = this.PlayerId;
+            }
+
+            if (action == "shoot")
+            {
+                var backPosition = new List<int> { myPosition[0] - 2 * direction[0], myPosition[1] - 2 * direction[1] };
+
+                while (IsValidPosition(backPosition, board) && board.colors[backPosition[0]][backPosition[1]] == this.PlayerId)
+                {
+                    positionToConquer = new List<int> { positionToConquer[0] + direction[0], positionToConquer[1] + direction[1] };
+
+                    if (IsValidPosition(positionToConquer, board) && IsFreePosition(positionToConquer, board))
+                    {
+                        board.colors[positionToConquer[0]][positionToConquer[1]] = this.PlayerId;
+                    }
+
+                    backPosition = new List<int> { backPosition[0] - direction[0], backPosition[1] - direction[1] };
+                }
+            }
+            else
+            {
+                board.player_positions[this.PlayerId] = positionToConquer;
+            }
+
+            return board;
+        }
+
+        private Board CloneBoard(Board initialBoard)
+        {
+            var colorsClone = new List<List<string>>();
+            foreach (var line in initialBoard.colors)
+            {
+                colorsClone.Add(new List<string>(line));
+            }
+
+            return new Board
+            {
+                height = initialBoard.height,
+                width = initialBoard.width,
+                player_positions = new Dictionary<string, List<int>>(initialBoard.player_positions),
+                colors = colorsClone
+            };
+        }
+
+        private bool IsFreePosition(int x, int y, Board board) => !board.player_positions.Any(p => p.Value.First() == x && p.Value.Last() == y);
+
+        private bool IsFreePosition(List<int> position, Board board) => IsFreePosition(position[0], position[1], board);
+
+        private bool IsValidPosition(List<int> position, Board board) => IsValidPosition(position[0], position[1], board);
+
+        private bool IsValidPosition(int x, int y, Board board) => x < board.width && y < board.height;
+
+        public int GetScoreDifference(Board board)
+        {
+            var boardScores = GetScores(board).OrderBy(x => x.Key == this.PlayerId);
+            return boardScores.Last().Value - boardScores.First().Value;
+        }
+
+        public Dictionary<string, int> GetScores(Board board) => board.colors.SelectMany(x => x).Where(x => x != null).GroupBy(x => x).ToDictionary(x => x.Key, x => x.Count());
+    }
+}
