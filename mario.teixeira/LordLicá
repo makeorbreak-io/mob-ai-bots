@@ -37,15 +37,16 @@ namespace mob_ai_csharp
 
         public Move NextMove(Board boardState)
         {
-            Move move = new Move();
+            //Move move = new Move();
 
-            move.Type = this.ActionTypes[R.Next(2)];
-            move.Direction = this.ActionDirections[this.R.Next(8)];
+            //move.Type = this.ActionTypes[R.Next(2)];
+            //move.Direction = this.ActionDirections[this.R.Next(8)];
 
             // k
 
+            Move move;
             int x;
-            (move, x) = GetBestMove(boardState, 1);
+            (move, x) = GetBestMove(boardState, Math.Min(boardState.turns_left, 1));
 
             return move;
         }
