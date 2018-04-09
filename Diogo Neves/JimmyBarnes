@@ -18,7 +18,7 @@ namespace mob_ai_csharp
             new List<int>{ 1, -1}, // ^-->
             new List<int>{-1,  0}, // <-
             new List<int>{ 1,  0}, // ->
-            new List<int>{ 1,  1}, // v-<-
+            new List<int>{ -1,  1}, // v-<-
             new List<int>{ 0,  1}, // v-
             new List<int>{ 1,  1}, // v-->
         };
@@ -202,14 +202,8 @@ namespace mob_ai_csharp
 
         public List<Func<Point, Point>> GetDirectionsFuncs()
         {
-            return
-
-                ActionDirections
-
-                    .Select(x => new Func<Point, Point>(y =>
-
+            return ActionDirections.Select(x => new Func<Point, Point>(y =>
                         new Point(y.X + x[0], y.Y + x[1])))
-
                     .ToList();
         }
 
