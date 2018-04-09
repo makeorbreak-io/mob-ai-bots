@@ -203,16 +203,13 @@ namespace mob_ai_csharp
         public List<Func<Point, Point>> GetDirectionsFuncs()
         {
             return
-                Enumerable.Range(-1, 3).Select(x =>
-                        new
-                        {
-                            X = x,
-                            YList = Enumerable.Range(-1, 3).Select(y => new Point(x, y))
-                        })
-                    .SelectMany(x => x.YList)
-                    .Where(x => x.X != 0 || x.Y != 0)
+
+                ActionDirections
+
                     .Select(x => new Func<Point, Point>(y =>
-                                 new Point(y.X += x.X, y.Y += x.Y)))
+
+                        new Point(y.X + x[0], y.Y + x[1])))
+
                     .ToList();
         }
 
