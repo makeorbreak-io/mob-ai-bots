@@ -534,7 +534,7 @@ class Bot(object):
 
     # make this move last as long as possible
     def smart_sleep(self, start):
-        max_sleep = 0.44 - (default_timer() - start)
+        max_sleep = 0.40 - (default_timer() - start)
         sleep(max_sleep)
         # p("start = %.4fms, max_sleep = %.4fms, total: %.4fms, " % (start / 1000, max_sleep, (default_timer() - start)))
 
@@ -553,6 +553,3 @@ class Bot(object):
 
 if __name__ == "__main__":  # pragma: no cover
     multipaint.run(Bot)
-
-
-# TODO: consider number of painted cells instead of just win ratio, maybe painted cells ratio or other heuristic
