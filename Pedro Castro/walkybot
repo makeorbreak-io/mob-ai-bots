@@ -52,7 +52,7 @@ const calculateCellValue = (player_id, state, position, cell) => {
       value.root = 1;
       break;
     default:
-      value.root =2;
+      value.root =1;
       break;
   }
 
@@ -83,7 +83,7 @@ const calculateShootValue = (player_id, state, position) => {
       inc++;
       const nextRow = prow - inc*dir[0]; 
       const nextCol = pcolumn - inc*dir[1]; 
-      if(nextRow <0 || nextRow >= width || nextCol < 0 || nextCol >= height){
+      if(nextRow <0 || nextRow >= height || nextCol < 0 || nextCol >= width){
         break;
       }else {
         if(colors[nextRow][nextCol] == player_id){
@@ -104,14 +104,12 @@ const calculateShootValue = (player_id, state, position) => {
       inc++;
       const nextRow = prow + inc*dir[0]; 
       const nextCol = pcolumn + inc*dir[1]; 
-      if(nextRow <0 || nextRow >= width || nextCol < 0 || nextCol >= height){
+      if(nextRow <0 || nextRow >= height || nextCol < 0 || nextCol >= width){
         dem++;
       }else {
         if(colors[nextRow][nextCol] == player_id){
           dem++;
         }else if(colors[nextRow][nextCol] == null){
-        }else {
-          dem--;
         }
       }
     }
@@ -152,14 +150,17 @@ const chooseAction = (player_id, state, board) => {
         maxPoints = points;
         chosenDirection = dir;
         chosenAction = 'walk';
+
       }else if(points.root === maxPoints.root && points.shoot.value > maxPoints.shoot.value){
         maxPoints = points;
         chosenDirection = dir;
         chosenAction = 'walk';
+
       }else if(points.root === maxPoints.root && points.shoot.value === maxPoints.shoot.value && points.around > 0 && (points.around < maxPoints.around || maxPoints.around < 1) ){
         maxPoints = points;
         chosenDirection = dir;
         chosenAction = 'walk';
+
       }
 
     }
@@ -168,7 +169,7 @@ const chooseAction = (player_id, state, board) => {
 
   const { value, dir } = board[prow][pcolumn].shoot;
   const freeSpaces = calculateAroundValue(player_id, state, [prow,pcolumn]);
-  if(value >= maxPoints.root && value > 0 && freeSpaces>1) {
+  if(value > maxPoints.root && value > 0 && freeSpaces>1) {
     if(board[prow + dir[0]][pcolumn + dir[1]].shoot.value > value){
       maxPoints = value;
       chosenDirection = dir;
@@ -204,6 +205,7 @@ const beSmart = (state, player_id) => {
       maxValue.key = key;
     }
   });
+  console.error(score);
   if(maxValue.key === player_id){
     return state.previous_actions[state.previous_actions.length-1][player_id];
   }else {
@@ -218,8 +220,10 @@ class Megabot2000 {
   next_move(state) {
 
     if(isStuck(state)){
+      console.error("stuck");
       previousState = state;
       const action = beSmart(state, this.player_id);
+      console.error("actions stuck",action);
       return action;
     }
 
@@ -229,7 +233,9 @@ class Megabot2000 {
     otherPlayers.forEach(o => board[o[0]][o[1]] = {root: -1 ,around: -1, shoot: {value: -1, dir: [0,0]}});
 
 
+
     const [type, direction] = chooseAction(this.player_id, state, board);
+
 
     previousState = state;
 
