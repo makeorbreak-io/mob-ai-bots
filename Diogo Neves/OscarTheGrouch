@@ -12,15 +12,15 @@ namespace mob_ai_csharp
 
         public List<List<int>> ActionDirections = new List<List<int>>()
         {
-            new List<int>{-1, -1}, // <-^-
-            new List<int>{ 0, -1}, // ^-
-            new List<int>{ 1, -1}, // ^-->
-            new List<int>{-1,  0}, // <-
-            new List<int>{ 1,  0}, // ->
-            new List<int>{ -1,  1}, // v-<-
-            new List<int>{ 0,  1}, // v-
-            new List<int>{ 1,  1}, // v-->
-        };
+            new List<int>{-1,-1}, //UPLEFT
+            new List<int>{0,-1},  //LEFT
+            new List<int>{1,-1},  //DOWNLEFT
+            new List<int>{-1,0},  //UP
+            new List<int>{1,0},   //DOWN
+            new List<int>{-1,1},  //UPRIGHT
+            new List<int>{0,1},   //RIGHT
+            new List<int>{1,1},   //DOWNRIGHT
+        };
 
         private string PlayerId;
 
@@ -43,7 +43,7 @@ namespace mob_ai_csharp
 
         public Move NextMove(Board boardState)
         {
-            myCurrentPos = new Point(boardState.player_positions[this.PlayerId][0], boardState.player_positions[this.PlayerId][1]);
+            myCurrentPos = new Point(boardState.player_positions[this.PlayerId][1], boardState.player_positions[this.PlayerId][0]);
 
             var atackMove = GetAttackMove(boardState);
 
@@ -67,13 +67,14 @@ namespace mob_ai_csharp
             var directions = GetDirectionsFuncs();
             var minDistance = (double)int.MaxValue;
             var pos = 0;
+            var invertedPos = new Point(myCurrentPos.Y, myCurrentPos.X);
 
             for (int i = 0; i < directions.Count; i++)
             {
-                var newPosition = directions[i](myCurrentPos);
+                var newPosition = directions[i](invertedPos);
 
-                var distance = Math.Sqrt(Math.Pow(point2Go.X - newPosition.X, 2) +
-                                         Math.Pow(point2Go.Y - newPosition.Y, 2));
+                var distance = Math.Sqrt(Math.Pow(point2Go.Y - newPosition.X, 2) +
+                                         Math.Pow(point2Go.X - newPosition.Y, 2));
 
                 if (minDistance > distance)
                 {
@@ -134,7 +135,7 @@ namespace mob_ai_csharp
                     return new Move()
                     {
                         Type = ActionTypes[0],
-                        Direction = new List<int> { a.X, a.Y },
+                        Direction = new List<int> { a.Y, a.X },
                     };
                 }
             }
@@ -154,6 +155,7 @@ namespace mob_ai_csharp
             var reversedDirections = GetDirectionsFuncsReversed();
 
             var counterList = new List<int>();
+            //var revertedPoint = new Point(initialPoint.Y, initialPoint.X);
 
             for (int i = 0; i < directions2Check.Count; i++)
             {
