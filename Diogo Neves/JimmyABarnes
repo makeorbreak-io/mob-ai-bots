@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
 using mob_ai_csharp.multipaint;
 using Newtonsoft.Json;
@@ -73,8 +72,8 @@ namespace mob_ai_csharp
             {
                 var newPosition = directions[i](myCurrentPos);
 
-                var distance = Math.Sqrt(Math.Pow(point2Go.Y - newPosition.X, 2) +
-                                         Math.Pow(point2Go.X - newPosition.Y, 2));
+                var distance = Math.Sqrt(Math.Pow(point2Go.X - newPosition.X, 2) +
+                                         Math.Pow(point2Go.Y - newPosition.Y, 2));
 
                 if (minDistance > distance)
                 {
@@ -107,6 +106,7 @@ namespace mob_ai_csharp
                     //TODO: Check for null
                     if (play > bestPlayCount)
                     {
+                        bestPlayCount = play;
                         Console.Error.WriteLine($"Possible play ({i},{j}) added with {play} count");
                         possiblePointsToGo.Add(thisPoint);
                     }
@@ -124,18 +124,17 @@ namespace mob_ai_csharp
 
             var count = Count(boardState, myCurrentPos);
 
-            var revesedMoves = new List<List<int>>(ActionDirections);
-            revesedMoves.Reverse();
+            var revesedMoves = GetDirectionsFuncsReversed();
 
             for (int i = 0; i < count.Count; i++)
             {
-                if (count[i] > bias)
+                if (count[i] >= bias)
                 {
+                    var a = revesedMoves[i](new Point(0, 0));
                     return new Move()
                     {
                         Type = ActionTypes[0],
-                        //Check if: Map this attack direction plz thanks
-                        Direction = revesedMoves[i],
+                        Direction = new List<int> { a.X, a.Y },
                     };
                 }
             }
@@ -149,7 +148,7 @@ namespace mob_ai_csharp
             var board = boardState.colors;
 
             // Check if X and Y are Qol
-            var myColor = board[myCurrentPos.X][myCurrentPos.Y];
+            var myColor = board[myCurrentPos.Y][myCurrentPos.X];
 
             var directions2Check = GetDirectionsFuncs();
             var reversedDirections = GetDirectionsFuncsReversed();
@@ -173,17 +172,20 @@ namespace mob_ai_csharp
                        y.Y >= 0 && // Inside Bounds Check
                        y.X >= 0 && // Inside Bounds Check
                        y.Y < board.Count && // Inside Bounds Check
-                       y.X < board[0].Count && // Inside Bounds Check
-                       board[y.Y][y.X] != myColor) // Not my color so I can shot
+                       y.X < board[0].Count // Inside Bounds Check
+                      )
                 {
+                    if (board[y.Y][y.X] != myColor) // Not my color so I can shot
+                        count++;
+
+                    if (board[y.Y][y.X].Any(u => !string.IsNullOrWhiteSpace(u.ToString())) && board[y.Y][y.X] != myColor)
+                        count++;
+
                     x = directions2Check[i](x);
                     y = reversedDirections[i](y);
-
-                    count++;
                 }
 
-                //if (count > 0 && log)
-                //    Console.Error.WriteLine($"Count {count} for: {i} in ({initialPoint.Y},{initialPoint.X})");
+                Console.WriteLine();
 
                 counterList.Add(count);
             }
@@ -203,6 +205,23 @@ namespace mob_ai_csharp
             var directionFuncs = GetDirectionsFuncs();
             directionFuncs.Reverse();
             return directionFuncs;
+        }
+    }
+
+    public class Point
+    {
+        public int X { get; set; }
+
+        public int Y { get; set; }
+
+        public Point()
+        {
+        }
+
+        public Point(int x, int y)
+        {
+            this.X = x;
+            this.Y = y;
         }
     }
 }
