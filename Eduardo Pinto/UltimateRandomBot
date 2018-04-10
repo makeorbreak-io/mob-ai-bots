@@ -9,48 +9,6 @@ public class Bot implements multipaint.Bot {
     private String playerId;
     Random r;
 
-    static class Coord {
-        int x, y;
-
-        Coord(int y, int x) {
-            this.x = x;
-            this.y = y;
-        }
-
-        @Override
-        public boolean equals(Object that) {
-            if (that == null)
-                return false;
-            if (!(that instanceof Coord))
-                return false;
-
-            Coord other = (Coord) that;
-            return other.x == this.x && other.y == this.y;
-        }
-
-        @Override
-        public int hashCode() {
-            return Integer.hashCode(x + y);
-        }
-
-        public int[] toArray() {
-            return new int[]{x, y};
-        }
-    }
-
-    static Coord N = new Coord(0, -1);
-    static Coord NW = new Coord(-1, -1);
-    static Coord NE = new Coord(1, -1);
-    static Coord S = new Coord(0, 1);
-    static Coord SE = new Coord(1, 1);
-    static Coord SW = new Coord(-1, 1);
-    static Coord E = new Coord(1, 0);
-    static Coord W = new Coord(-1, 0);
-
-    public static Coord[] actions = new Coord[]{
-            NW, N, NE, W, E, SW, S, SE
-    };
-
     static String[] ActionTypes = new String[]{"shoot", "walk"};
     static int[][] ActionDirections = new int[][]{
             {-1, -1}, {0, -1}, {1, -1},
