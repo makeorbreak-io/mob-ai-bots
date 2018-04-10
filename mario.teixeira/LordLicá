@@ -141,7 +141,7 @@ namespace mob_ai_csharp
 
         private bool IsValidPosition(List<int> position, Board board) => IsValidPosition(position[0], position[1], board);
 
-        private bool IsValidPosition(int x, int y, Board board) => x < board.width && y < board.height;
+        private bool IsValidPosition(int x, int y, Board board) => x >= 0 && x < board.width && y >= 0 && y < board.height;
 
         public int GetScoreDifference(Board board)
         {
