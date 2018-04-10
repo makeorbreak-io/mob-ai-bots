@@ -46,7 +46,7 @@ namespace mob_ai_csharp
 
             Move move;
             int x;
-            (move, x) = GetBestMove(boardState, Math.Min(boardState.turns_left, 2));
+            (move, x) = GetBestMove(boardState, Math.Min(boardState.turns_left, 1));
 
             return move;
         }
@@ -91,20 +91,20 @@ namespace mob_ai_csharp
 
             if (IsValidPosition(positionToConquer, board) && IsFreePosition(positionToConquer, board))
             {
-                board.colors[positionToConquer[0]][positionToConquer[1]] = this.PlayerId;
+                board.colors[positionToConquer[1]][positionToConquer[0]] = this.PlayerId;
             }
 
             if (action == "shoot")
             {
                 var backPosition = new List<int> { myPosition[0] - 2 * direction[0], myPosition[1] - 2 * direction[1] };
 
-                while (IsValidPosition(backPosition, board) && board.colors[backPosition[0]][backPosition[1]] == this.PlayerId)
+                while (IsValidPosition(backPosition, board) && board.colors[backPosition[1]][backPosition[0]] == this.PlayerId)
                 {
                     positionToConquer = new List<int> { positionToConquer[0] + direction[0], positionToConquer[1] + direction[1] };
 
                     if (IsValidPosition(positionToConquer, board) && IsFreePosition(positionToConquer, board))
                     {
-                        board.colors[positionToConquer[0]][positionToConquer[1]] = this.PlayerId;
+                        board.colors[positionToConquer[1]][positionToConquer[0]] = this.PlayerId;
                     }
 
                     backPosition = new List<int> { backPosition[0] - direction[0], backPosition[1] - direction[1] };
