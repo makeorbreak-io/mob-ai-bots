@@ -45,35 +45,32 @@ namespace mob_ai_csharp
             // k
 
             Move move;
-            int x;
-            (move, x) = GetBestMove(boardState, Math.Min(boardState.turns_left, 2));
+            var x = new List<int>();
+            (move, x) = GetBestMove(boardState, Math.Min(boardState.turns_left, 2), x);
 
             return move;
         }
 
-        public (Move, int) GetBestMove(Board board, int plays)
+        public (Move, List<int>) GetBestMove(Board board, int plays, List<int> currentScores)
         {
-            int bestScore = 0;
+            List<int> bestScore = null;
             Move bestMove = null;
             foreach (var action in ActionTypes)
             {
                 foreach (var direction in ActionDirections)
                 {
                     var newBoard = GetNewBoard(board, action, direction);
-                    int score;
-                    if (plays <= 1)
-                    {
-                        score = GetScoreDifference(newBoard);
-                    }
-                    else
+                    var hipoScores = new List<int>(currentScores);
+                    hipoScores.Add(GetScoreDifference(newBoard));
+                    if (plays > 1)
                     {
                         Move move;
-                        (move, score) = GetBestMove(newBoard, plays - 1);
+                        (move, hipoScores) = GetBestMove(newBoard, plays - 1, hipoScores);
                     }
 
-                    if (bestMove == null || bestScore < score)
+                    if (bestMove == null || bestScore.Zip(hipoScores, (b, h) => b < h ? -1 : b == h ? 0 : 1).FirstOrDefault(x => x != 0) == -1)
                     {
-                        bestScore = score;
+                        bestScore = hipoScores;
                         bestMove = new Move { Direction = direction, Type = action };
                     }
                 }
