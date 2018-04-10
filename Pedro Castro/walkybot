@@ -7,7 +7,7 @@ const printBoard = (board) => console.error("board:\n",board.map(l => l.map( o =
 const surroundings = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
 
 let previousState = null;
-
+let ignoreValue = false;
 const getShufledDirections = () => {
 
   const a = surroundings;
@@ -52,7 +52,7 @@ const calculateCellValue = (player_id, state, position, cell) => {
       value.root = 1;
       break;
     default:
-      value.root =1;
+      value.root = ignoreValue ? 1 :2;
       break;
   }
 
@@ -110,6 +110,10 @@ const calculateShootValue = (player_id, state, position) => {
         if(colors[nextRow][nextCol] == player_id){
           dem++;
         }else if(colors[nextRow][nextCol] == null){
+        }else {
+          if(!ignoreValue){
+            dem--;
+          }
         }
       }
     }
@@ -169,7 +173,7 @@ const chooseAction = (player_id, state, board) => {
 
   const { value, dir } = board[prow][pcolumn].shoot;
   const freeSpaces = calculateAroundValue(player_id, state, [prow,pcolumn]);
-  if(value > maxPoints.root && value > 0 && freeSpaces>1) {
+  if((value > maxPoints.root || (value>= maxPoints.root && value > 0 && freeSpaces > 2)) && freeSpaces>1) {
     if(board[prow + dir[0]][pcolumn + dir[1]].shoot.value > value){
       maxPoints = value;
       chosenDirection = dir;
@@ -220,22 +224,25 @@ class Megabot2000 {
   next_move(state) {
 
     if(isStuck(state)){
-      console.error("stuck");
       previousState = state;
       const action = beSmart(state, this.player_id);
-      console.error("actions stuck",action);
-      return action;
+
+      if(action === null){
+        ignoreValue = true; 
+      }else{
+        return action;
+      }
+    }else{
+      ignoreValue = false;
     }
 
     let board = state.colors.map((line,row) => line.map( (cell, column) => (calculateCellValue(this.player_id, state, [row,column], cell))));
 
     const otherPlayers = Object.keys(state.player_positions).map( key => key != this.player_id ? state.player_positions[key] : null).filter( o=> o );
-    otherPlayers.forEach(o => board[o[0]][o[1]] = {root: -1 ,around: -1, shoot: {value: -1, dir: [0,0]}});
-
+    otherPlayers.forEach(o => board[o[0]][o[1]].root=-1);
 
 
     const [type, direction] = chooseAction(this.player_id, state, board);
-
 
     previousState = state;
 
