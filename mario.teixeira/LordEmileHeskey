@@ -46,7 +46,7 @@ namespace mob_ai_csharp
 
             Move move;
             int x;
-            (move, x) = GetBestMove(boardState, Math.Min(boardState.turns_left, 1));
+            (move, x) = GetBestMove(boardState, Math.Min(boardState.turns_left, 2));
 
             return move;
         }
