@@ -87,40 +87,40 @@ namespace mob_ai_csharp
             var myPosition = initialBoard.player_positions[this.PlayerId];
             var board = CloneBoard(initialBoard);
 
-            var positionToConquer = new List<int> { myPosition[0] + direction[0], myPosition[1] + direction[1] };
+            var positionToConquer = new List<int> { myPosition[1] + direction[0], myPosition[0] + direction[1] };
 
             if (IsValidPosition(positionToConquer, board) && IsFreePosition(positionToConquer, board))
             {
                 board.colors[positionToConquer[1]][positionToConquer[0]] = this.PlayerId;
-            }
 
-            if (action == "shoot")
-            {
-                var backPosition = new List<int> { myPosition[0] - direction[0], myPosition[1] - direction[1] };
-
-                if (IsValidPosition(backPosition, board) && board.colors[backPosition[1]][backPosition[0]] == this.PlayerId)
+                if (action == "shoot")
                 {
-                    backPosition = new List<int> { backPosition[0] - direction[0], backPosition[1] - direction[1] };
-                    while (IsValidPosition(backPosition, board) && board.colors[backPosition[1]][backPosition[0]] == this.PlayerId)
+                    var backPosition = new List<int> { myPosition[1] - direction[0], myPosition[0] - direction[1] };
+
+                    if (IsValidPosition(backPosition, board) && board.colors[backPosition[1]][backPosition[0]] == this.PlayerId)
                     {
-                        positionToConquer = new List<int> { positionToConquer[0] + direction[0], positionToConquer[1] + direction[1] };
-
-                        if (IsValidPosition(positionToConquer, board) && IsFreePosition(positionToConquer, board))
-                        {
-                            board.colors[positionToConquer[1]][positionToConquer[0]] = this.PlayerId;
-                        }
-                        else
-                        {
-                            break;
-                        }
-
                         backPosition = new List<int> { backPosition[0] - direction[0], backPosition[1] - direction[1] };
+                        while (IsValidPosition(backPosition, board) && board.colors[backPosition[1]][backPosition[0]] == this.PlayerId)
+                        {
+                            positionToConquer = new List<int> { positionToConquer[0] + direction[0], positionToConquer[1] + direction[1] };
+
+                            if (IsValidPosition(positionToConquer, board) && IsFreePosition(positionToConquer, board))
+                            {
+                                board.colors[positionToConquer[1]][positionToConquer[0]] = this.PlayerId;
+                            }
+                            else
+                            {
+                                break;
+                            }
+
+                            backPosition = new List<int> { backPosition[0] - direction[0], backPosition[1] - direction[1] };
+                        }
                     }
                 }
-            }
-            else
-            {
-                board.player_positions[this.PlayerId] = positionToConquer;
+                else
+                {
+                    board.player_positions[this.PlayerId] = new List<int> { positionToConquer[1], positionToConquer[0] };
+                }
             }
 
             return board;
@@ -143,7 +143,7 @@ namespace mob_ai_csharp
             };
         }
 
-        private bool IsFreePosition(int x, int y, Board board) => !board.player_positions.Any(p => p.Value.First() == x && p.Value.Last() == y);
+        private bool IsFreePosition(int x, int y, Board board) => !board.player_positions.Any(p => p.Value.Last() == x && p.Value.First() == y);
 
         private bool IsFreePosition(List<int> position, Board board) => IsFreePosition(position[0], position[1], board);
 
