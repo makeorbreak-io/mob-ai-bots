@@ -68,7 +68,7 @@ namespace mob_ai_csharp
                         (move, hipoScores) = GetBestMove(newBoard, plays - 1, hipoScores);
                     }
 
-                    if (bestMove == null || bestScore.Zip(hipoScores, (b, h) => b < h ? -1 : b == h ? 0 : 1).FirstOrDefault(x => x != 0) == -1)
+                    if (bestMove == null || bestScore.Sum() < hipoScores.Sum() || (bestScore.Sum() == hipoScores.Sum() && bestScore.Zip(hipoScores, (b, h) => b < h ? -1 : b == h ? 0 : 1).FirstOrDefault(x => x != 0) == -1))
                     {
                         bestScore = hipoScores;
                         bestMove = new Move { Direction = direction, Type = action };
