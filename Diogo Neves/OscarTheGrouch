@@ -12,15 +12,15 @@ namespace mob_ai_csharp
 
         public List<List<int>> ActionDirections = new List<List<int>>()
         {
-            new List<int>{-1,-1}, //UPLEFT
-            new List<int>{0,-1},  //LEFT
-            new List<int>{1,-1},  //DOWNLEFT
-            new List<int>{-1,0},  //UP
-            new List<int>{1,0},   //DOWN
-            new List<int>{-1,1},  //UPRIGHT
-            new List<int>{0,1},   //RIGHT
-            new List<int>{1,1},   //DOWNRIGHT
-        };
+            new List<int>{-1,-1}, //UPLEFT
+            new List<int>{0,-1},  //LEFT
+            new List<int>{1,-1},  //DOWNLEFT
+            new List<int>{-1,0},  //UP
+            new List<int>{1,0},   //DOWN
+            new List<int>{-1,1},  //UPRIGHT
+            new List<int>{0,1},   //RIGHT
+            new List<int>{1,1},   //DOWNRIGHT
+        };
 
         private string PlayerId;
 
@@ -67,14 +67,14 @@ namespace mob_ai_csharp
             var directions = GetDirectionsFuncs();
             var minDistance = (double)int.MaxValue;
             var pos = 0;
-            var invertedPos = new Point(myCurrentPos.Y, myCurrentPos.X);
+            //var invertedPos = new Point(myCurrentPos.Y, myCurrentPos.X);
 
             for (int i = 0; i < directions.Count; i++)
             {
-                var newPosition = directions[i](invertedPos);
+                var newPosition = directions[i](myCurrentPos);
 
-                var distance = Math.Sqrt(Math.Pow(point2Go.Y - newPosition.X, 2) +
-                                         Math.Pow(point2Go.X - newPosition.Y, 2));
+                var distance = Math.Sqrt(Math.Pow(point2Go.Y - newPosition.Y, 2) +
+                                         Math.Pow(point2Go.X - newPosition.X, 2));
 
                 if (minDistance > distance)
                 {
@@ -125,17 +125,17 @@ namespace mob_ai_csharp
 
             var count = Count(boardState, myCurrentPos);
 
-            var revesedMoves = GetDirectionsFuncsReversed();
+            var reversedMoves = GetDirectionsFuncsReversed();
 
             for (int i = 0; i < count.Count; i++)
             {
                 if (count[i] >= bias)
                 {
-                    var a = revesedMoves[i](new Point(0, 0));
+                    var a = ActionDirections[i];
                     return new Move()
                     {
                         Type = ActionTypes[0],
-                        Direction = new List<int> { a.Y, a.X },
+                        Direction = a,
                     };
                 }
             }
@@ -155,7 +155,6 @@ namespace mob_ai_csharp
             var reversedDirections = GetDirectionsFuncsReversed();
 
             var counterList = new List<int>();
-            //var revertedPoint = new Point(initialPoint.Y, initialPoint.X);
 
             for (int i = 0; i < directions2Check.Count; i++)
             {
@@ -168,7 +167,7 @@ namespace mob_ai_csharp
                 while (x.Y >= 0 && // Inside Bounds Check
                        x.X >= 0 && // Inside Bounds Check
                        x.Y < board.Count && // Inside Bounds Check
-                       x.X < board[0].Count && // Inside Bounds Check (Assuming it's a square...)
+                       x.X < board[0].Count && // Inside Bounds Check (Assuming it's a squareish...)
                        board[x.Y][x.X] ==
                        myColor && // My Color, how many colores behind me
                        y.Y >= 0 && // Inside Bounds Check
@@ -180,7 +179,7 @@ namespace mob_ai_csharp
                     if (board[y.Y][y.X] != myColor) // Not my color so I can shot
                         count++;
 
-                    if (board[y.Y][y.X].Any(u => !string.IsNullOrWhiteSpace(u.ToString())) && board[y.Y][y.X] != myColor)
+                    if (!string.IsNullOrWhiteSpace(board[y.Y][y.X]) && board[y.Y][y.X] != myColor)
                         count++;
 
                     x = directions2Check[i](x);
@@ -198,7 +197,7 @@ namespace mob_ai_csharp
         public List<Func<Point, Point>> GetDirectionsFuncs()
         {
             return ActionDirections.Select(x => new Func<Point, Point>(y =>
-                        new Point(y.X + x[0], y.Y + x[1])))
+                        new Point(y.X + x[1], y.Y + x[0])))
                     .ToList();
         }
 
