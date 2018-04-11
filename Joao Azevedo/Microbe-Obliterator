@@ -42,7 +42,7 @@ public class Bot implements multipaint.Bot {
         return tot;
     }
 
-    public int maxOwnScore(Board state) {
+    public int myScore(Board state) {
         int tot = 0;
         for (int i = 0; i < state.colors.length; i++) {
             for (int j = 0; j < state.colors[i].length; j++) {
@@ -53,28 +53,24 @@ public class Bot implements multipaint.Bot {
         return tot;
     }
 
-    public int minEnemyScore(Board state) {
-        int tot = state.height * state.width;
+    public int theirScore(Board state) {
+        int tot = 0;
         for (int i = 0; i < state.colors.length; i++) {
             for (int j = 0; j < state.colors[i].length; j++) {
                 if (state.colors[i][j] != null && !state.colors[i][j].equals(this.playerId))
-                    tot--;
+                    tot++;
             }
         }
         return tot;
     }
 
     private int customScore(Board state, Board original) {
-        int area = state.height * state.width;
-        double percentageDone = ((double) original.previous_actions.length) / (original.previous_actions.length + original.turns_left);
-        if (percentageDone > 0.5) {
-            if (mine < theirs)
-                return maxOwnScore(state);
-            else if (mine > theirs & (((double) (mine - theirs)) / area) > 0.25)
-                return maxOwnScore(state);
-            else if (mine > theirs & (((double) (mine - theirs)) / area) < 0.10)
-                return minEnemyScore(state);
-        }
+        double area = state.height * state.width;
+        double p = ((double) original.previous_actions.length) / (original.previous_actions.length + original.turns_left);
+        if (mine > theirs & ((mine - theirs) / area) > 0.25)
+            return myScore(state);
+        else if (p > 0.5 && mine > theirs & ((mine - theirs) / area) < 0.10)
+            return theirs - theirScore(state);
         return score(state);
     }
 
@@ -112,7 +108,7 @@ public class Bot implements multipaint.Bot {
         // Check if we are stuck using this move.
         int currentScore = scores.get(scores.size() - 1);
         int[] pos = state.player_positions.get(player);
-        if (currentScore < 0 && scores.size() > STUCK_MOVES) {
+        if (currentScore <= 0 && scores.size() > STUCK_MOVES) {
             boolean stuck = true;
             for (int j = scores.size() - STUCK_MOVES; j < scores.size() - 1; j++) {
                 if (scores.get(j) != currentScore) {
