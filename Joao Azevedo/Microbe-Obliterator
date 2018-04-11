@@ -28,26 +28,50 @@ public class Bot implements multipaint.Bot {
     }
 
     public int score(Board state) {
-        int pScore = 0;
         int tot = 0;
-        int area = state.height * state.width;
         for (int i = 0; i < state.colors.length; i++) {
             for (int j = 0; j < state.colors[i].length; j++) {
                 if (state.colors[i][j] != null) {
-                    if (state.colors[i][j].equals(this.playerId)) {
-                        pScore++;
+                    if (state.colors[i][j].equals(this.playerId))
                         tot++;
-                    } else
+                    else
                         tot--;
                 }
             }
         }
-        pScore = (pScore * 100) / area;
-        if (tot > 0)
-            pScore += 10;
-        else if (tot == 0)
-            pScore += 5;
-        return pScore;
+        return tot;
+    }
+
+    public int myScore(Board state) {
+        int tot = 0;
+        for (int i = 0; i < state.colors.length; i++) {
+            for (int j = 0; j < state.colors[i].length; j++) {
+                if (state.colors[i][j] != null && state.colors[i][j].equals(this.playerId))
+                    tot++;
+            }
+        }
+        return tot;
+    }
+
+    public int theirScore(Board state) {
+        int tot = 0;
+        for (int i = 0; i < state.colors.length; i++) {
+            for (int j = 0; j < state.colors[i].length; j++) {
+                if (state.colors[i][j] != null && !state.colors[i][j].equals(this.playerId))
+                    tot++;
+            }
+        }
+        return tot;
+    }
+
+    private int customScore(Board state, Board original) {
+        double area = state.height * state.width;
+        double p = ((double) original.previous_actions.length) / (original.previous_actions.length + original.turns_left);
+        if (mine > theirs & ((mine - theirs) / area) > 0.25)
+            return myScore(state);
+        else if (p > 0.2 && mine > theirs & ((mine - theirs) / area) < 0.05)
+            return theirs - theirScore(state);
+        return score(state);
     }
 
     public class Shot {
@@ -356,7 +380,7 @@ public class Bot implements multipaint.Bot {
                         }
                         next = next(next, actions);
                     } while (next.turns_left > 0 && (state.turns_left - next.turns_left) < 10);
-                    totScore += score(next);
+                    totScore += customScore(next, state);
                     scores.put(moves[i], totScore);
                     nSims++;
                 }
