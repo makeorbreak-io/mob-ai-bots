@@ -12,15 +12,15 @@ namespace mob_ai_csharp
 
         public List<List<int>> ActionDirections = new List<List<int>>()
         {
-            new List<int>{-1,-1}, //UPLEFT
-            new List<int>{0,-1},  //LEFT
-            new List<int>{1,-1},  //DOWNLEFT
-            new List<int>{-1,0},  //UP
-            new List<int>{1,0},   //DOWN
-            new List<int>{-1,1},  //UPRIGHT
-            new List<int>{0,1},   //RIGHT
-            new List<int>{1,1},   //DOWNRIGHT
-        };
+            new List<int>{-1,-1}, //UPLEFT
+            new List<int>{0,-1},  //LEFT
+            new List<int>{1,-1},  //DOWNLEFT
+            new List<int>{-1,0},  //UP
+            new List<int>{1,0},   //DOWN
+            new List<int>{-1,1},  //UPRIGHT
+            new List<int>{0,1},   //RIGHT
+            new List<int>{1,1},   //DOWNRIGHT
+        };
 
         private string PlayerId;
 
@@ -45,13 +45,13 @@ namespace mob_ai_csharp
         {
             myCurrentPos = new Point(boardState.player_positions[this.PlayerId][1], boardState.player_positions[this.PlayerId][0]);
 
-            var atackMove = GetAttackMove(boardState);
+            //var atackMove = GetAttackMove(boardState);
 
-            if (atackMove != null)
-            {
-                Console.Error.WriteLine("Attack");
-                return atackMove;
-            }
+            //if (atackMove != null)
+            //{
+            //    Console.Error.WriteLine("Attack");
+            //    return atackMove;
+            //}
 
             var point2go = BestMovePoint(boardState);
 
