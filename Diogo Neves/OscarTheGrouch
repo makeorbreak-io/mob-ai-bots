@@ -60,7 +60,7 @@ namespace mob_ai_csharp
             {
                 Direction = ActionDirections[0],
                 Type = ActionTypes[0]
-            }
+            };
             //return GetDirectionForPoint(point2go);
         }
 
