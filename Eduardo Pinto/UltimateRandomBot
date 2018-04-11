@@ -182,7 +182,7 @@ public class Bot implements multipaint.Bot {
     }
 
     private boolean isEmpty(int[] pos, String[][] colors) {
-        return null == colors[pos[0]][pos[1]];
+        return isWithinLimits(pos, colors) && null == colors[pos[0]][pos[1]];
     }
 
     private boolean isOwnColor(int[] pos, String[][] colors) {
