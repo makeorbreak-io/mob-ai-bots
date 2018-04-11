@@ -12,6 +12,8 @@ public class Bot implements multipaint.Bot {
     private Action[] moves = null;
     private List<Integer> scores = new ArrayList<>();
     private List<Map<String, int[]>> positions = new ArrayList<>();
+    private int mine;
+    private int theirs;
 
     public static String[] ActionTypes = new String[]{"shoot", "walk"};
     public static int[][] ActionDirections = new int[][]{
@@ -38,6 +40,42 @@ public class Bot implements multipaint.Bot {
             }
         }
         return tot;
+    }
+
+    public int maxOwnScore(Board state) {
+        int tot = 0;
+        for (int i = 0; i < state.colors.length; i++) {
+            for (int j = 0; j < state.colors[i].length; j++) {
+                if (state.colors[i][j] != null && state.colors[i][j].equals(this.playerId))
+                    tot++;
+            }
+        }
+        return tot;
+    }
+
+    public int minEnemyScore(Board state) {
+        int tot = state.height * state.width;
+        for (int i = 0; i < state.colors.length; i++) {
+            for (int j = 0; j < state.colors[i].length; j++) {
+                if (state.colors[i][j] != null && !state.colors[i][j].equals(this.playerId))
+                    tot--;
+            }
+        }
+        return tot;
+    }
+
+    private int customScore(Board state, Board original) {
+        int area = state.height * state.width;
+        double percentageDone = ((double) original.previous_actions.length) / (original.previous_actions.length + original.turns_left);
+        if (percentageDone > 0.5) {
+            if (mine < theirs)
+                return maxOwnScore(state);
+            else if (mine > theirs & (((double) (mine - theirs)) / area) > 0.25)
+                return maxOwnScore(state);
+            else if (mine > theirs & (((double) (mine - theirs)) / area) < 0.10)
+                return minEnemyScore(state);
+        }
+        return score(state);
     }
 
     public class Shot {
@@ -308,6 +346,20 @@ public class Bot implements multipaint.Bot {
         scores.add(score(state));
         positions.add(state.player_positions);
 
+        // Get my and enemies' score.
+        mine = 0;
+        theirs = 0;
+        for (int i = 0; i < state.height; i++) {
+            for (int j = 0; j < state.width; j++) {
+                if (state.colors[i][j] != null) {
+                    if (state.colors[i][j].equals(playerId))
+                        mine++;
+                    else
+                        theirs++;
+                }
+            }
+        }
+
         Action bestAction = null;
         long bestScore = Long.MIN_VALUE;
         Map<Action, Long> scores = new HashMap<>();
@@ -332,7 +384,7 @@ public class Bot implements multipaint.Bot {
                         }
                         next = next(next, actions);
                     } while (next.turns_left > 0 && (state.turns_left - next.turns_left) < 10);
-                    totScore += score(next);
+                    totScore += customScore(next, state);
                     scores.put(moves[i], totScore);
                     nSims++;
                 }
