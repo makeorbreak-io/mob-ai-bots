@@ -45,19 +45,23 @@ namespace mob_ai_csharp
         {
             myCurrentPos = new Point(boardState.player_positions[this.PlayerId][1], boardState.player_positions[this.PlayerId][0]);
 
-            //var atackMove = GetAttackMove(boardState);
+            var atackMove = GetAttackMove(boardState);
 
-            //if (atackMove != null)
-            //{
-            //    Console.Error.WriteLine("Attack");
-            //    return atackMove;
-            //}
+            if (atackMove != null)
+            {
+                Console.Error.WriteLine("Attack");
+                return atackMove;
+            }
 
-            var point2go = BestMovePoint(boardState);
+            //var point2go = BestMovePoint(boardState);
 
             Console.Error.WriteLine("Move");
-
-            return GetDirectionForPoint(point2go);
+            return new Move
+            {
+                Direction = ActionDirections[0],
+                Type = ActionTypes[0]
+            }
+            //return GetDirectionForPoint(point2go);
         }
 
         private Move GetDirectionForPoint(Point point2Go)
