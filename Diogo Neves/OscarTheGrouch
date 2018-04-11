@@ -109,7 +109,7 @@ namespace mob_ai_csharp
 
                 var count = 0;
 
-                while (!OutOfBounds(newPoint, boardState) && !OutOfBounds(attackPoint, boardState))
+                while (!OutOfBounds(newPoint, boardState) && !OutOfBounds(attackPoint, boardState) && boardState.colors[newPoint.Y][newPoint.X] == PlayerId)
                 {
                     if (boardState.colors[attackPoint.Y][attackPoint.X] != PlayerId)
                     {
