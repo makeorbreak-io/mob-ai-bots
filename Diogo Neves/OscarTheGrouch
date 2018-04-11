@@ -28,8 +28,6 @@ namespace mob_ai_csharp
 
         private Point myCurrentPos;
 
-        public static List<string> errors = new List<string>();
-
         private static void Main(string[] args)
         {
             Runner.Run(new Bot());
@@ -45,13 +43,13 @@ namespace mob_ai_csharp
         {
             myCurrentPos = new Point(boardState.player_positions[this.PlayerId][1], boardState.player_positions[this.PlayerId][0]);
 
-            var atackMove = GetAttackMove(boardState);
+            //var atackMove = GetAttackMove(boardState);
 
-            if (atackMove != null)
-            {
-                Console.Error.WriteLine("Attack");
-                return atackMove;
-            }
+            //if (atackMove != null)
+            //{
+            //    Console.Error.WriteLine("Attack");
+            //    return atackMove;
+            //}
 
             //var point2go = BestMovePoint(boardState);
 
