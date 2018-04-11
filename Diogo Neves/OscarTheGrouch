@@ -12,15 +12,15 @@ namespace mob_ai_csharp
 
         public List<List<int>> ActionDirections = new List<List<int>>()
         {
-            new List<int>{-1,-1}, //UPLEFT
-            new List<int>{0,-1},  //LEFT
-            new List<int>{1,-1},  //DOWNLEFT
-            new List<int>{-1,0},  //UP
-            new List<int>{1,0},   //DOWN
-            new List<int>{-1,1},  //UPRIGHT
-            new List<int>{0,1},   //RIGHT
-            new List<int>{1,1},   //DOWNRIGHT
-        };
+            new List<int>{-1,-1}, //UPLEFT
+            new List<int>{0,-1},  //LEFT
+            new List<int>{1,-1},  //DOWNLEFT
+            new List<int>{-1,0},  //UP
+            new List<int>{1,0},   //DOWN
+            new List<int>{-1,1},  //UPRIGHT
+            new List<int>{0,1},   //RIGHT
+            new List<int>{1,1},   //DOWNRIGHT
+        };
 
         private string PlayerId;
 
