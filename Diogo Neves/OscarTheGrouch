@@ -12,15 +12,15 @@ namespace mob_ai_csharp
 
         public List<List<int>> ActionDirections = new List<List<int>>()
         {
-            new List<int>{-1,-1}, //UPLEFT
-            new List<int>{0,-1},  //LEFT
-            new List<int>{1,-1},  //DOWNLEFT
-            new List<int>{-1,0},  //UP
-            new List<int>{1,0},   //DOWN
-            new List<int>{-1,1},  //UPRIGHT
-            new List<int>{0,1},   //RIGHT
-            new List<int>{1,1},   //DOWNRIGHT
-        };
+            new List<int>{ -1 , -1 }, //UPLEFT
+            new List<int>{  0 , -1 },  //LEFT
+            new List<int>{  1 , -1 },  //DOWNLEFT
+            new List<int>{ -1 , 0  },  //UP
+            new List<int>{  1 , 0  },   //DOWN
+            new List<int>{ -1 , 1  },  //UPRIGHT
+            new List<int>{  0 , 1  },   //RIGHT
+            new List<int>{  1 , 1  },   //DOWNRIGHT
+        };
 
         private string PlayerId;
 
@@ -42,179 +42,194 @@ namespace mob_ai_csharp
         public Move NextMove(Board boardState)
         {
             myCurrentPos = new Point(boardState.player_positions[this.PlayerId][1], boardState.player_positions[this.PlayerId][0]);
+            Console.Error.WriteLine($"My old position-> ({myCurrentPos.X}, {myCurrentPos.Y})");
 
-            //var atackMove = GetAttackMove(boardState);
+            //Depth stuff
+            //Get a Move
+            var move = new Move();
+            var dic = new Dictionary<List<int>, int>();
 
-            //if (atackMove != null)
-            //{
-            //    Console.Error.WriteLine("Attack");
-            //    return atackMove;
-            //}
+            ActionDirections.ForEach(x => dic.Add(x, 0));
 
-            //var point2go = BestMovePoint(boardState);
+            move = GetNextAttack(boardState, myCurrentPos);
 
-            Console.Error.WriteLine("Move");
-            return new Move
+            if (move != null)
             {
-                Direction = ActionDirections[0],
-                Type = ActionTypes[0]
-            };
-            //return GetDirectionForPoint(point2go);
-        }
-
-        private Move GetDirectionForPoint(Point point2Go)
-        {
-            //Without walls detection
-
-            var directions = GetDirectionsFuncs();
-            var minDistance = (double)int.MaxValue;
-            var pos = 0;
-            //var invertedPos = new Point(myCurrentPos.Y, myCurrentPos.X);
-
-            for (int i = 0; i < directions.Count; i++)
-            {
-                var newPosition = directions[i](myCurrentPos);
-
-                var distance = Math.Sqrt(Math.Pow(point2Go.Y - newPosition.Y, 2) +
-                                         Math.Pow(point2Go.X - newPosition.X, 2));
-
-                if (minDistance > distance)
-                {
-                    minDistance = distance;
-                    pos = i;
-                }
+                MapList2Move(move.Direction);
+                return move;
             }
 
-            return new Move()
+            move = GetNewMove(boardState, myCurrentPos, dic, 1);
+
+            if (move == null)
             {
-                Direction = ActionDirections[pos],
-                // walk
-                Type = ActionTypes[1]
-            };
-        }
-
-        private Point BestMovePoint(Board boardState)
-        {
-            var possiblePointsToGo = new List<Point>();
-            var bestPlayCount = 0;
-
-            for (int i = 0; i < boardState.width; i++)
-            {
-                for (int j = 0; j < boardState.height; j++)
-                {
-                    var thisPoint = new Point(i, j);
-
-                    var play = Count(boardState, thisPoint, true).OrderByDescending(x => x).FirstOrDefault();
-
-                    //TODO: Check for null
-                    if (play > bestPlayCount)
-                    {
-                        bestPlayCount = play;
-                        Console.Error.WriteLine($"Possible play ({i},{j}) added with {play} count");
-                        possiblePointsToGo.Add(thisPoint);
-                    }
-                }
+                move = BackUpMove(myCurrentPos, boardState);
             }
 
-            return possiblePointsToGo.Last();
+            MapList2Move(move.Direction);
+
+            return move;
         }
 
-        private Move GetAttackMove(Board boardState)
+        private Move BackUpMove(Point myCurrentPos, Board boardState)
         {
-            var bias = 3;
+            var dic = new Dictionary<List<int>, double>();
 
-            var board = boardState.colors;
+            var opponentID = boardState.player_positions.FirstOrDefault(x => x.Key != PlayerId).Key;
 
-            var count = Count(boardState, myCurrentPos);
+            var opponentPos = boardState.player_positions[opponentID];
 
-            var reversedMoves = GetDirectionsFuncsReversed();
-
-            for (int i = 0; i < count.Count; i++)
+            for (int i = 0; i < ActionDirections.Count; i++)
             {
-                if (count[i] >= bias)
-                {
-                    var a = ActionDirections[i];
-                    return new Move()
-                    {
-                        Type = ActionTypes[0],
-                        Direction = a,
-                    };
-                }
+                var newPoint = ExecuteWalkMove(ActionDirections[i], myCurrentPos);
+
+                var distance = Math.Sqrt(Math.Pow(newPoint.X - opponentPos[1], 2) + Math.Pow(newPoint.Y - opponentPos[0], 2));
+
+                dic.Add(ActionDirections[i], distance);
             }
 
-            // Change bias
-            return null;
+            var move = new Move();
+            move.Type = ActionTypes[1];
+            move.Direction = dic.OrderBy(x => x.Value).FirstOrDefault().Key;
+
+            return move;
         }
 
-        public List<int> Count(Board boardState, Point initialPoint, bool log = false)
+        private Move GetNextAttack(Board boardState, Point myCurrentPos)
         {
-            var board = boardState.colors;
+            var dic = new Dictionary<List<int>, int>();
+            var optimalAttack = new Move() { Direction = ActionDirections[0], Type = ActionTypes[0] }; // Random Move vvery not hardcoded;
 
-            // Check if X and Y are Qol
-            var myColor = board[myCurrentPos.Y][myCurrentPos.X];
-
-            var directions2Check = GetDirectionsFuncs();
-            var reversedDirections = GetDirectionsFuncsReversed();
-
-            var counterList = new List<int>();
-
-            for (int i = 0; i < directions2Check.Count; i++)
+            for (int i = 0; i < ActionDirections.Count; i++)
             {
-                var x = directions2Check[i](initialPoint);
-                var y = reversedDirections[i](initialPoint);
+                var newPoint = ExecuteWalkMove(ActionDirections[i], myCurrentPos);
+
+                var attackDirection = new List<int> { -ActionDirections[i][0], -ActionDirections[i][1] };
+                var attackPoint = ExecuteWalkMove(attackDirection, myCurrentPos);
 
                 var count = 0;
 
-                // Verify if this is ok.
-                while (x.Y >= 0 && // Inside Bounds Check
-                       x.X >= 0 && // Inside Bounds Check
-                       x.Y < board.Count && // Inside Bounds Check
-                       x.X < board[0].Count && // Inside Bounds Check (Assuming it's a squareish...)
-                       board[x.Y][x.X] ==
-                       myColor && // My Color, how many colores behind me
-                       y.Y >= 0 && // Inside Bounds Check
-                       y.X >= 0 && // Inside Bounds Check
-                       y.Y < board.Count && // Inside Bounds Check
-                       y.X < board[0].Count // Inside Bounds Check
-                      )
+                while (!OutOfBounds(newPoint, boardState) && !OutOfBounds(attackPoint, boardState))
                 {
-                    if (board[y.Y][y.X] != myColor) // Not my color so I can shot
+                    if (boardState.colors[attackPoint.Y][attackPoint.X] != PlayerId)
+                    {
                         count++;
+                    }
 
-                    if (!string.IsNullOrWhiteSpace(board[y.Y][y.X]) && board[y.Y][y.X] != myColor)
-                        count++;
-
-                    x = directions2Check[i](x);
-                    y = reversedDirections[i](y);
+                    newPoint = ExecuteWalkMove(ActionDirections[i], newPoint);
+                    attackPoint = ExecuteWalkMove(attackDirection, attackPoint);
                 }
 
-                Console.WriteLine();
-
-                counterList.Add(count);
+                dic[attackDirection] = count;
             }
 
-            return counterList;
+            var nSt = dic.Where(x => x.Value >= 2).OrderByDescending(x => x.Value).FirstOrDefault();
+
+            if (nSt.Key == null)
+                return null;
+
+            optimalAttack.Direction = nSt.Key;
+            return optimalAttack;
         }
 
-        public List<Func<Point, Point>> GetDirectionsFuncs()
+        private Move GetNewMove(Board boardState, Point myCurrentPos, Dictionary<List<int>, int> dic, int i)
         {
-            return ActionDirections.Select(x => new Func<Point, Point>(y =>
-                        new Point(y.X + x[1], y.Y + x[0])))
-                    .ToList();
+            var optimalMove = new Move() { Direction = ActionDirections[0], Type = ActionTypes[1] }; // Random Move vvery not hardcoded;
+
+            if (i <= 0)
+            {
+                optimalMove.Direction = dic.OrderByDescending(x => x.Value).FirstOrDefault().Key;
+
+                return optimalMove;
+            }
+
+            for (int j = 0; j < ActionDirections.Count; j++)
+            {
+                var newPosition = ExecuteWalkMove(ActionDirections[j], myCurrentPos);
+
+                if (OutOfBounds(newPosition, boardState))
+                    continue;
+
+                if (boardState.colors[newPosition.Y][newPosition.X] != PlayerId)
+                {
+                    dic[ActionDirections[j]]++;
+                    boardState.colors[newPosition.Y][newPosition.X] = PlayerId;
+                    var newMove = GetNewMove(boardState, newPosition, dic, --i);
+                    return newMove;
+                }
+            }
+
+            var nSt = dic.Where(x => x.Value > 0).OrderByDescending(x => x.Value).FirstOrDefault();
+
+            if (nSt.Key == null)
+            {
+                return null;
+            }
+
+            optimalMove.Direction = nSt.Key;
+            return optimalMove;
         }
 
-        public List<Func<Point, Point>> GetDirectionsFuncsReversed()
+        private bool OutOfBounds(Point point, Board boardState)
         {
-            var directionFuncs = GetDirectionsFuncs();
-            directionFuncs.Reverse();
-            return directionFuncs;
+            return point.X < 0 || point.X >= boardState.width || point.Y < 0 || point.Y >= boardState.height;
+        }
+
+        public Point ExecuteWalkMove(List<int> move, Point cP) => new Point(cP.X + move[1], cP.Y + move[0]);
+
+        public void MapList2Move(List<int> move)
+        {
+            if (move[0] == 1)
+            {
+                if (move[1] == 1)
+                {
+                    Console.Error.WriteLine("DOWN RIGHT");
+                }
+                else if (move[1] == 0)
+                {
+                    Console.Error.WriteLine("DOWN");
+                }
+                else
+                {
+                    Console.Error.WriteLine("DOWN LEFT");
+                }
+            }
+            else if (move[0] == 0)
+            {
+                if (move[1] == 1)
+                {
+                    Console.Error.WriteLine("RIGHT");
+                }
+                else if (move[1] == 0)
+                {
+                    Console.Error.WriteLine("NO ACTION");
+                }
+                else
+                {
+                    Console.Error.WriteLine("LEFT");
+                }
+            }
+            else if (move[0] == -1)
+            {
+                if (move[1] == 1)
+                {
+                    Console.Error.WriteLine("UP RIGHT");
+                }
+                else if (move[1] == 0)
+                {
+                    Console.Error.WriteLine("UP");
+                }
+                else
+                {
+                    Console.Error.WriteLine("UP LEFT");
+                }
+            }
         }
     }
 
     public class Point
     {
         public int X { get; set; }
-
         public int Y { get; set; }
 
         public Point()
