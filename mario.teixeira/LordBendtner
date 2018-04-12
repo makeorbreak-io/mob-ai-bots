@@ -45,10 +45,61 @@ namespace mob_ai_csharp
             // k
 
             Move move;
-            var x = new List<int>();
-            (move, x) = GetBestMove(boardState, Math.Min(boardState.turns_left, 3), x);
+            var scores = new List<int>();
+            (move, scores) = GetBestMove(boardState, Math.Min(boardState.turns_left, 3), scores);
+
+            if (scores.Last() == GetScoreDifference(boardState))
+            {
+                return GetMoveDirection(boardState);
+            }
 
             return move;
+        }
+
+        private (Move, int) GetMoveTowards(Board board, int targetY, int targetX)
+        {
+            var distanceY = targetY - board.player_positions[this.PlayerId][0];
+            var distanceX = targetX - board.player_positions[this.PlayerId][1];
+            var nMoves = Math.Max(Math.Abs(distanceY), Math.Abs(distanceX));
+
+            return (
+                            new Move
+                            {
+                                Direction = new List<int> { Normalize(distanceY), Normalize(distanceX) },
+                                Type = ActionTypes[1],
+                            }
+            , nMoves);
+        }
+
+        private Move GetMoveDirection(Board board)
+        {
+            Move bestMove = null;
+            int? distance = null;
+            for (int i = 0; i < board.height; i++)
+            {
+                for (int j = 0; j < board.width; j++)
+                {
+                    if (board.colors[i][j] != this.PlayerId && !board.player_positions.Any(x => x.Value[0] == i && x.Value[1] == j))
+                    {
+                        Move nMove;
+                        int nDistance;
+                        (nMove, nDistance) = GetMoveTowards(board, i, j);
+                        if (distance == null || distance > nDistance)
+                        {
+                            distance = nDistance;
+                            bestMove = nMove;
+                        }
+                    }
+                }
+            }
+
+            if (bestMove == null)
+            {
+                var opponentPosition = board.player_positions.First(x => x.Key != this.PlayerId).Value;
+                (bestMove, distance) = GetMoveTowards(board, opponentPosition[0], opponentPosition[1]);
+            }
+
+            return bestMove;
         }
 
         public (Move, List<int>) GetBestMove(Board board, int plays, List<int> currentScores)
@@ -68,17 +119,17 @@ namespace mob_ai_csharp
                         (move, hipoScores) = GetBestMove(newBoard, plays - 1, hipoScores);
                     }
 
-                    if (bestMove == null || Enumerable.Range(0, bestScore.Count).Select(x => bestScore.Count - x - 1).Select(x => bestScore[x] - hipoScores[x]).FirstOrDefault(x => x != 0) < 0)
-                    {
-                        bestScore = hipoScores;
-                        bestMove = new Move { Direction = direction, Type = action };
-                    }
-
-                    //if (bestMove == null || bestScore.Last() < hipoScores.Last() || (bestScore.Last() == hipoScores.Last() && bestScore.Zip(hipoScores, (b, h) => b < h ? -1 : b == h ? 0 : 1).FirstOrDefault(x => x != 0) == -1))
+                    //if (bestMove == null || Enumerable.Range(0, bestScore.Count).Select(x => bestScore.Count - x - 1).Select(x => bestScore[x] - hipoScores[x]).FirstOrDefault(x => x != 0) < 0)
                     //{
                     //    bestScore = hipoScores;
                     //    bestMove = new Move { Direction = direction, Type = action };
                     //}
+
+                    if (bestMove == null || bestScore.Last() < hipoScores.Last() || (bestScore.Last() == hipoScores.Last() && bestScore.Zip(hipoScores, (b, h) => b < h ? -1 : b == h ? 0 : 1).FirstOrDefault(x => x != 0) == -1))
+                    {
+                        bestScore = hipoScores;
+                        bestMove = new Move { Direction = direction, Type = action };
+                    }
                 }
             }
 
@@ -145,6 +196,8 @@ namespace mob_ai_csharp
                 colors = colorsClone
             };
         }
+
+        private int Normalize(int v) => v == 0 ? 0 : (v / Math.Abs(v));
 
         private bool IsFreePosition(int x, int y, Board board) => !board.player_positions.Any(p => p.Value.Last() == x && p.Value.First() == y);
 
