@@ -68,17 +68,17 @@ namespace mob_ai_csharp
                         (move, hipoScores) = GetBestMove(newBoard, plays - 1, hipoScores);
                     }
 
-                    //if (bestMove == null || Enumerable.Range(0, bestScore.Count).Select(x => bestScore.Count - x - 1).Select(x => bestScore[x] - hipoScores[x]).FirstOrDefault(x => x != 0) == -1)
-                    //{
-                    //    bestScore = hipoScores;
-                    //    bestMove = new Move { Direction = direction, Type = action };
-                    //}
-
-                    if (bestMove == null || bestScore.Last() < hipoScores.Last() || (bestScore.Last() == hipoScores.Last() && bestScore.Zip(hipoScores, (b, h) => b < h ? -1 : b == h ? 0 : 1).FirstOrDefault(x => x != 0) == -1))
+                    if (bestMove == null || Enumerable.Range(0, bestScore.Count).Select(x => bestScore.Count - x - 1).Select(x => bestScore[x] - hipoScores[x]).FirstOrDefault(x => x != 0) < 0)
                     {
                         bestScore = hipoScores;
                         bestMove = new Move { Direction = direction, Type = action };
                     }
+
+                    //if (bestMove == null || bestScore.Last() < hipoScores.Last() || (bestScore.Last() == hipoScores.Last() && bestScore.Zip(hipoScores, (b, h) => b < h ? -1 : b == h ? 0 : 1).FirstOrDefault(x => x != 0) == -1))
+                    //{
+                    //    bestScore = hipoScores;
+                    //    bestMove = new Move { Direction = direction, Type = action };
+                    //}
                 }
             }
 
