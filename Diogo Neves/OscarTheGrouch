@@ -135,6 +135,7 @@ namespace mob_ai_csharp
         private Move GetNewMove(Board boardState, Point myCurrentPos, Dictionary<List<int>, int> dic, int i)
         {
             var optimalMove = new Move() { Direction = ActionDirections[0], Type = ActionTypes[1] }; // Random Move vvery not hardcoded;
+            var opponentID = boardState.player_positions.FirstOrDefault(x => x.Key != PlayerId).Key;
 
             if (i <= 0)
             {
@@ -153,6 +154,10 @@ namespace mob_ai_csharp
                 if (boardState.colors[newPosition.Y][newPosition.X] != PlayerId)
                 {
                     dic[ActionDirections[j]]++;
+
+                    if(boardState.colors[newPosition.Y][newPosition.X] == opponentID)
+                        dic[ActionDirections[j]]++;
+
                     boardState.colors[newPosition.Y][newPosition.X] = PlayerId;
                     var newMove = GetNewMove(boardState, newPosition, dic, --i);
                     return newMove;
