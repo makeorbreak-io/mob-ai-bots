@@ -69,7 +69,7 @@ public class Bot implements multipaint.Bot {
         double p = ((double) original.previous_actions.length) / (original.previous_actions.length + original.turns_left);
         if (mine > theirs & ((mine - theirs) / area) > 0.25)
             return myScore(state);
-        else if (p > 0.2 && mine > theirs & ((mine - theirs) / area) < 0.05)
+        else if (p > 0.9 || (p > 0.2 && mine > theirs & ((mine - theirs) / area) < 0.05))
             return theirs - theirScore(state);
         return score(state);
     }
@@ -379,7 +379,7 @@ public class Bot implements multipaint.Bot {
                                 actions.put(player, randomMove(next, player));
                         }
                         next = next(next, actions);
-                    } while (next.turns_left > 0 && (state.turns_left - next.turns_left) < 10);
+                    } while (next.turns_left > 0 && (state.turns_left - next.turns_left) < 5);
                     totScore += customScore(next, state);
                     scores.put(moves[i], totScore);
                     nSims++;
