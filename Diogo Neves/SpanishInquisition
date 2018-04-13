@@ -180,6 +180,8 @@ namespace mob_ai_csharp
         private List<List<Move>> GetPermutations()
         {
             //TODO: plz do a recursion in this part... or kill yourself before someone sees this code kthxbye;
+            // I srsly Hope no one sees this before I change this...
+            // <insert here god why meme>
             var fullPermList = new List<List<Move>>();
             foreach (var dir1 in ActionDirections)
             {
@@ -189,10 +191,18 @@ namespace mob_ai_csharp
                     {
                         foreach (var act2 in ActionTypes)
                         {
-                            var perm = new List<Move>();
-                            perm.Add(new Move { Direction = dir1, Type = act1 });
-                            perm.Add(new Move { Direction = dir2, Type = act2 });
-                            fullPermList.Add(perm);
+                            foreach (var dir3 in ActionDirections)
+                            {
+                                foreach (var act3 in ActionTypes)
+                                {
+                                    var perm = new List<Move>();
+                                    perm.Add(new Move { Direction = dir1, Type = act1 });
+                                    perm.Add(new Move { Direction = dir2, Type = act2 });
+                                    perm.Add(new Move { Direction = dir2, Type = act2 });
+
+                                    fullPermList.Add(perm);
+                                }
+                            }
                         }
                     }
                 }
