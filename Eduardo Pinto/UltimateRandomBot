@@ -7,8 +7,12 @@ import multipaint.Runner;
 
 public class Bot implements multipaint.Bot {
     private String playerId;
-    Random r;
-    int height, width;
+    private int height, width;
+    private int[][] history;
+    //private List<Pair<Integer, Integer>> positionHistory;
+    private int turns = -1;
+    private int currentTurn = -1;
+
 
     static String[] ActionTypes = new String[]{"shoot", "walk"};
     static int[][] ActionDirections = new int[][]{
@@ -19,12 +23,25 @@ public class Bot implements multipaint.Bot {
 
     public void setPlayerId(String playerId) {
         this.playerId = playerId;
-        this.r = new Random();
     }
 
     public Action nextMove(Board state) {
+        if (turns == -1)
+            turns = state.turns_left;
+
+        if (history == null)
+            history = new int[state.height][state.width];
+
+        /*if (positionHistory == null) {
+            positionHistory = new ArrayList<>();
+            int[] currentPos = state.player_positions.get(playerId);
+            //positionHistory.add(new Pair<>(currentPos[0], currentPos[1]));
+        }*/
+
         height = state.height;
         width = state.width;
+
+        currentTurn = turns - state.turns_left;
 
         System.err.println("\n\n#############################\nTurns left:" + state.turns_left);
         Action a = new Action();
@@ -158,8 +175,8 @@ public class Bot implements multipaint.Bot {
         else
             points -= 2;
 
-        /*if (isAtBorder(nextPos, colors))
-            points -= 1;*/
+        if (isAtBorder(nextPos, colors))
+            points -= 1;
 
         if (isOccupiedByOpponent(nextPos, players))
             points -= 2;
@@ -193,7 +210,7 @@ public class Bot implements multipaint.Bot {
     }
 
     private boolean isAtBorder(int[] pos, String[][] colors) {
-        return pos[0] == 0 || pos[0] == height || pos[1] == 0 || pos[1] == width;
+        return pos[0] == 0 || pos[0] == height-1 || pos[1] == 0 || pos[1] == width-1;
     }
 
     private boolean isWithinLimits(int[] pos, String[][] colors) {
@@ -238,4 +255,8 @@ public class Bot implements multipaint.Bot {
         Runner.run(new Bot());
     }
 
+
+    // TODO: avoid getting stuck in one position
+    // TODO: identify profiles of opponents
+    // TODO: change points calculation with depth and number of plays
 }
