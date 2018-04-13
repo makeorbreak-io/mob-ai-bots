@@ -1,0 +1,349 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Runtime.Serialization.Formatters.Binary;
+using mob_ai_csharp.multipaint;
+using Newtonsoft.Json;
+
+namespace mob_ai_csharp
+{
+    public class Bot : IBot
+    {
+        public List<string> ActionTypes = new List<string>() { "shoot", "walk" };
+
+        public List<List<int>> ActionDirections = new List<List<int>>()
+        {
+            new List<int> {-1, -1}, //UPLEFT
+            new List<int> {0, -1}, //LEFT
+            new List<int> {1, -1}, //DOWNLEFT
+            new List<int> {-1, 0}, //UP
+            new List<int> {1, 0}, //DOWN
+            new List<int> {-1, 1}, //UPRIGHT
+            new List<int> {0, 1}, //RIGHT
+            new List<int> {1, 1}, //DOWNRIGHT
+        };
+
+        private string PlayerId;
+
+        private string OponentID;
+
+        public Random R;
+
+        private Point myCurrentPos;
+
+        private static void Main(string[] args)
+        {
+            Runner.Run(new Bot());
+        }
+
+        public void SetPlayerId(string playerId)
+        {
+            this.PlayerId = playerId;
+            this.R = new Random();
+        }
+
+        public Move NextMove(Board boardState)
+        {
+            myCurrentPos = new Point(boardState.player_positions[this.PlayerId][1],
+                boardState.player_positions[this.PlayerId][0]);
+
+            this.OponentID = boardState.player_positions.FirstOrDefault(x => x.Key != PlayerId).Key;
+
+            //Depth stuff
+            //Get a Move
+            var move = new Move();
+
+            move = GetNewMove(boardState, myCurrentPos, 2);
+
+            if (move == null)
+            {
+                move = BackUpMove(myCurrentPos, boardState);
+            }
+
+            MapList2Move(move.Direction);
+
+            return move;
+        }
+
+        private Move GetNewMove(Board boardState, Point myCurrentPosition, int v)
+        {
+            var permutations = GetPermutations();
+
+            var theChosenOne = EvaluatePermutations(permutations, boardState, myCurrentPosition);
+
+            return theChosenOne;
+        }
+
+        private Move EvaluatePermutations(List<List<Move>> permutations, Board board, Point myCurrentPosition)
+        {
+            var hg = 0;
+            var selectedMove = new Move() { Direction = ActionDirections[0], Type = ActionTypes[0] };
+
+            var a = permutations.Where(x => x[0].Type == ActionTypes[0]);
+
+            foreach (var moves in permutations)
+            {
+                var modifiablePosition = new Point(myCurrentPosition.X, myCurrentPosition.Y);
+                var cellCount = 0;
+                var board2 = CreateNewBoard(board);
+
+                foreach (var move in moves)
+                {
+                    var partialCount = 0;
+                    (board2, modifiablePosition, partialCount) = ExcuteMove(board2, move, modifiablePosition);
+
+                    cellCount += partialCount;
+                }
+
+                if (cellCount > hg)
+                {
+                    hg = cellCount;
+                    selectedMove = moves[0];
+                }
+            }
+
+            return selectedMove;
+        }
+
+        public Board CreateNewBoard(Board board)
+        {
+            var colors = new List<List<string>>();
+
+            for (int i = 0; i < board.colors.Count; i++)
+            {
+                colors.Add(board.colors[i].ToList());
+            }
+
+            return new Board
+            {
+                colors = colors,
+                height = board.height,
+                width = board.width,
+                turns_left = board.turns_left,
+                player_positions = board.player_positions,
+            };
+        }
+
+        private (Board, Point, int) ExcuteMove(Board board, Move move, Point modifiablePosition)
+        {
+            var cellCount = 0;
+            if (move.Type == ActionTypes[1])
+            {
+                var possibleMovePoint = ExecuteWalkMove(move.Direction, modifiablePosition);
+
+                if (!OutOfBounds(possibleMovePoint, board))
+                {
+                    if (board.colors[possibleMovePoint.Y][possibleMovePoint.X] != PlayerId)
+                    {
+                        cellCount++;
+                    }
+
+                    if (board.colors[possibleMovePoint.Y][possibleMovePoint.X] == OponentID)
+                    {
+                        cellCount++;
+                    }
+
+                    board.colors[possibleMovePoint.Y][possibleMovePoint.X] = PlayerId;
+                    modifiablePosition = possibleMovePoint;
+                }
+            }
+            else
+            {
+                var reverseAttackDirection = new List<int> { -move.Direction[0], -move.Direction[1] };
+
+                var atackSquare = ExecuteWalkMove(move.Direction, modifiablePosition);
+                var behindSquare = ExecuteWalkMove(reverseAttackDirection, modifiablePosition);
+
+                while (!OutOfBounds(behindSquare, board) && !OutOfBounds(atackSquare, board) && board.colors[behindSquare.Y][behindSquare.X] == PlayerId)
+                {
+                    if (board.colors[atackSquare.Y][atackSquare.X] != PlayerId)
+                    {
+                        cellCount++;
+                    }
+
+                    if (board.colors[atackSquare.Y][atackSquare.X] == OponentID)
+                    {
+                        cellCount++;
+                    }
+
+                    board.colors[atackSquare.Y][atackSquare.X] = PlayerId;
+
+                    atackSquare = ExecuteWalkMove(move.Direction, atackSquare);
+                    behindSquare = ExecuteWalkMove(reverseAttackDirection, behindSquare);
+                }
+            }
+
+            return (board, modifiablePosition, cellCount);
+        }
+
+        private List<List<Move>> GetPermutations()
+        {
+            //TODO: plz do a recursion in this part... or kill yourself before someone sees this code kthxbye;
+            var fullPermList = new List<List<Move>>();
+            foreach (var dir1 in ActionDirections)
+            {
+                foreach (var act1 in ActionTypes)
+                {
+                    foreach (var dir2 in ActionDirections)
+                    {
+                        foreach (var act2 in ActionTypes)
+                        {
+                            var perm = new List<Move>();
+                            perm.Add(new Move { Direction = dir1, Type = act1 });
+                            perm.Add(new Move { Direction = dir2, Type = act2 });
+                            fullPermList.Add(perm);
+                        }
+                    }
+                }
+            }
+
+            return fullPermList;
+        }
+
+        public List<Move> G(string type) => Enumerable.Range(0, ActionDirections.Count)
+            .Select(x => new Move { Direction = ActionDirections[x], Type = type }).ToList();
+
+        private Move BackUpMove(Point myCurrentPos, Board boardState)
+        {
+            var dic = new Dictionary<List<int>, double>();
+
+            var opponentID = boardState.player_positions.FirstOrDefault(x => x.Key != PlayerId).Key;
+
+            var opponentPos = boardState.player_positions[opponentID];
+
+            for (int i = 0; i < ActionDirections.Count; i++)
+            {
+                var newPoint = ExecuteWalkMove(ActionDirections[i], myCurrentPos);
+
+                var distance = Math.Sqrt(Math.Pow(newPoint.X - opponentPos[1], 2) +
+                                         Math.Pow(newPoint.Y - opponentPos[0], 2));
+
+                dic.Add(ActionDirections[i], distance);
+            }
+
+            var move = new Move();
+            move.Type = ActionTypes[1];
+            move.Direction = dic.OrderBy(x => x.Value).FirstOrDefault().Key;
+
+            return move;
+        }
+
+        private Move GetNextAttack(Board boardState, Point myCurrentPosition)
+        {
+            var dic = new Dictionary<List<int>, int>();
+            var optimalAttack =
+                new Move() { Direction = ActionDirections[0], Type = ActionTypes[0] }; // Random Move vvery not hardcoded;
+
+            for (int i = 0; i < ActionDirections.Count; i++)
+            {
+                var newPoint = ExecuteWalkMove(ActionDirections[i], myCurrentPosition);
+
+                var attackDirection = new List<int> { -ActionDirections[i][0], -ActionDirections[i][1] };
+                var attackPoint = ExecuteWalkMove(attackDirection, myCurrentPosition);
+
+                var count = 0;
+
+                while (!OutOfBounds(newPoint, boardState) && !OutOfBounds(attackPoint, boardState) &&
+                       boardState.colors[newPoint.Y][newPoint.X] == PlayerId)
+                {
+                    if (boardState.colors[attackPoint.Y][attackPoint.X] != PlayerId)
+                    {
+                        count++;
+                    }
+
+                    newPoint = ExecuteWalkMove(ActionDirections[i], newPoint);
+                    attackPoint = ExecuteWalkMove(attackDirection, attackPoint);
+                }
+
+                dic[attackDirection] = count;
+            }
+
+            var nSt = dic.Where(x => x.Value >= 2).OrderByDescending(x => x.Value).FirstOrDefault();
+
+            if (nSt.Key == null)
+                return null;
+
+            optimalAttack.Direction = nSt.Key;
+            return optimalAttack;
+        }
+
+        public bool IsMySquare(Board boardState, Point myCurrentPosition) =>
+            boardState.colors[myCurrentPosition.Y][myCurrentPosition.X] == PlayerId;
+
+        public bool IsEnemySquare(Board boardState, Point point) =>
+            boardState.colors[point.Y][point.X] == boardState.player_positions.FirstOrDefault(x => x.Key != PlayerId).Key;
+
+        private bool OutOfBounds(Point point, Board boardState)
+        {
+            return point.X < 0 || point.X >= boardState.width || point.Y < 0 || point.Y >= boardState.height;
+        }
+
+        public Point ExecuteWalkMove(List<int> move, Point cP) => new Point(cP.X + move[1], cP.Y + move[0]);
+
+        public void MapList2Move(List<int> move)
+        {
+            if (move[0] == 1)
+            {
+                if (move[1] == 1)
+                {
+                    Console.Error.WriteLine("DOWN RIGHT");
+                }
+                else if (move[1] == 0)
+                {
+                    Console.Error.WriteLine("DOWN");
+                }
+                else
+                {
+                    Console.Error.WriteLine("DOWN LEFT");
+                }
+            }
+            else if (move[0] == 0)
+            {
+                if (move[1] == 1)
+                {
+                    Console.Error.WriteLine("RIGHT");
+                }
+                else if (move[1] == 0)
+                {
+                    Console.Error.WriteLine("NO ACTION");
+                }
+                else
+                {
+                    Console.Error.WriteLine("LEFT");
+                }
+            }
+            else if (move[0] == -1)
+            {
+                if (move[1] == 1)
+                {
+                    Console.Error.WriteLine("UP RIGHT");
+                }
+                else if (move[1] == 0)
+                {
+                    Console.Error.WriteLine("UP");
+                }
+                else
+                {
+                    Console.Error.WriteLine("UP LEFT");
+                }
+            }
+        }
+    }
+
+    public class Point
+    {
+        public int X { get; set; }
+        public int Y { get; set; }
+
+        public Point()
+        {
+        }
+
+        public Point(int x, int y)
+        {
+            this.X = x;
+            this.Y = y;
+        }
+    }
+}
