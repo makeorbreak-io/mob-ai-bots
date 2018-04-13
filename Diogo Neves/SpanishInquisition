@@ -32,6 +32,8 @@ namespace mob_ai_csharp
 
         private Point myCurrentPos;
 
+        private List<Move> myLastMoves = new List<Move>();
+
         private static void Main(string[] args)
         {
             Runner.Run(new Bot());
@@ -62,6 +64,20 @@ namespace mob_ai_csharp
             }
 
             MapList2Move(move.Direction);
+            myLastMoves.Add(move);
+
+            if (myLastMoves.Count > 2)
+            {
+                // Someone will see this code and probably kill me ..
+                if (myLastMoves[myLastMoves.Count - 1].Direction[0] == myLastMoves[myLastMoves.Count - 2].Direction[0] && myLastMoves[myLastMoves.Count - 1].Direction[1] == myLastMoves[myLastMoves.Count - 2].Direction[1])
+                {
+                    return new Move
+                    {
+                        Direction = ActionDirections[R.Next(8)],
+                        Type = ActionTypes[0],
+                    };
+                }
+            }
 
             return move;
         }
