@@ -108,7 +108,7 @@ public class Bot implements multipaint.Bot {
         // Check if we are stuck using this move.
         int currentScore = scores.get(scores.size() - 1);
         int[] pos = state.player_positions.get(player);
-        if (currentScore <= 0 && scores.size() > STUCK_MOVES) {
+        if (currentScore < 0 && scores.size() > STUCK_MOVES) {
             boolean stuck = true;
             for (int j = scores.size() - STUCK_MOVES; j < scores.size() - 1; j++) {
                 if (scores.get(j) != currentScore) {
@@ -379,7 +379,7 @@ public class Bot implements multipaint.Bot {
                                 actions.put(player, randomMove(next, player));
                         }
                         next = next(next, actions);
-                    } while (next.turns_left > 0 && (state.turns_left - next.turns_left) < 5);
+                    } while (next.turns_left > 0 && (state.turns_left - next.turns_left) < 20);
                     totScore += customScore(next, state);
                     scores.put(moves[i], totScore);
                     nSims++;
