@@ -379,7 +379,7 @@ public class Bot implements multipaint.Bot {
                                 actions.put(player, randomMove(next, player));
                         }
                         next = next(next, actions);
-                    } while (next.turns_left > 0 && (state.turns_left - next.turns_left) < 20);
+                    } while (next.turns_left > 0 && (state.turns_left - next.turns_left) < 10);
                     totScore += customScore(next, state);
                     scores.put(moves[i], totScore);
                     nSims++;
