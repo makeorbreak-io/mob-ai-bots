@@ -53,24 +53,10 @@ public class Bot implements multipaint.Bot {
         return tot;
     }
 
-    public int theirScore(Board state) {
-        int tot = 0;
-        for (int i = 0; i < state.colors.length; i++) {
-            for (int j = 0; j < state.colors[i].length; j++) {
-                if (state.colors[i][j] != null && !state.colors[i][j].equals(this.playerId))
-                    tot++;
-            }
-        }
-        return tot;
-    }
-
     private int customScore(Board state, Board original) {
         double area = state.height * state.width;
-        double p = ((double) original.previous_actions.length) / (original.previous_actions.length + original.turns_left);
         if (mine > theirs & ((mine - theirs) / area) > 0.25)
             return myScore(state);
-        else if (p > 0.9 || (p > 0.2 && mine > theirs & ((mine - theirs) / area) < 0.05))
-            return theirs - theirScore(state);
         return score(state);
     }
 
