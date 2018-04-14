@@ -98,8 +98,10 @@ namespace mob_ai_csharp
                 return null;
             }
 
-            //on west side of the board
-            if (mePos[1] > boardState.width / 2 && mePos[1] != boardState.width-1)
+            //on right side of the board
+            if (mePos[1] > boardState.width / 2 
+                && mePos[1] != boardState.width-1
+                && boardState.colors[mePos[0]][mePos[1]-1] == PlayerId)
             {
                 //get positions to the right
                 int paintedPosNr = 0;
@@ -128,7 +130,7 @@ namespace mob_ai_csharp
                     }
                 }
             }
-            else //on est side of the board
+            else //on left side of the board
             {
                 int paintedPosNr = 0;
                 bool stop = false;
@@ -159,7 +161,9 @@ namespace mob_ai_csharp
                 }
             }
             //on south side of the board
-            if (mePos[0] > boardState.height / 2 && mePos[0] != boardState.height - 1)
+            if (mePos[0] > boardState.height / 2 
+                && mePos[0] != boardState.height - 1
+                && boardState.colors[mePos[0]-1][mePos[1]] == PlayerId)
             {
                 //get positions painted below me
                 int paintedPosNr = 0;
@@ -234,7 +238,7 @@ namespace mob_ai_csharp
                 if (nextMoveY >= 0 && nextMoveY < boardState.height
                     && nextMoveX >= 0 && nextMoveX < boardState.width
                     && boardState.colors[nextMoveY][nextMoveX] != PlayerId
-                    && !IsPosOccupied(boardState, possibleAction[0], possibleAction[1]))
+                    && !IsPosOccupied(boardState, nextMoveY, nextMoveX))
                 {
                     var weight = boardState.colors[nextMoveY][nextMoveX] == null ? 1 : 2;
                     possiblePlays.Add(CreateWeightActionDirection(actionOp, weight));
