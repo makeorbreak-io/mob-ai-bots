@@ -98,7 +98,6 @@ namespace mob_ai_csharp
 
         private Move EvaluatePermutations(List<List<Move>> permutations, Board board, Point myCurrentPosition)
         {
-            var BestMoves = new List<MoveCount>();
             var hg = 0.0;
             var selectedMove = new Move() { Direction = ActionDirections[0], Type = ActionTypes[0] };
 
@@ -112,19 +111,11 @@ namespace mob_ai_csharp
 
                 foreach (var move in moves)
                 {
-                    //var newMove = new Move()
-                    //{
-                    //    Direction = new List<int> { 0, -1 },
-                    //    Type = ActionTypes[1],
-                    //};
-
                     var partialCount = 0.0;
                     (board2, modifiablePosition, partialCount) = ExcuteMove(board2, move, modifiablePosition);
 
                     cellCount += partialCount;
                 }
-
-                BestMoves.Add(new MoveCount(moves, cellCount));
 
                 if (cellCount > hg)
                 {
@@ -132,8 +123,6 @@ namespace mob_ai_csharp
                     selectedMove = moves[0];
                 }
             }
-
-            var orderedMove = BestMoves.OrderByDescending(x => x.Count);
 
             return selectedMove;
         }
