@@ -52,7 +52,7 @@ namespace mob_ai_csharp
 
             if (isStuck)
             {
-                var lastMove = boardState.previous_actions.Last()[this.PlayerId];
+                var lastMove = boardState.previous_actions.First()[this.PlayerId];
                 if (lastMove.Type == ActionTypes[0])
                 {
                     return new Move
