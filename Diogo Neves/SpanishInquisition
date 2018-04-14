@@ -159,6 +159,9 @@ namespace mob_ai_csharp
 
         private (Board, Point, double) ExcuteMove(Board board, Move move, Point modifiablePosition)
         {
+            var guysPos = board.player_positions.FirstOrDefault(x => x.Key != PlayerId);
+            var guysPoint = new Point(guysPos.Value[0], guysPos.Value[1]);
+
             var cellCount = 0.0;
             if (move.Type == ActionTypes[1])
             {
@@ -166,6 +169,11 @@ namespace mob_ai_csharp
 
                 if (!OutOfBounds(possibleMovePoint, board))
                 {
+                    if (possibleMovePoint == guysPoint)
+                    {
+                        cellCount -= 1;
+                    }
+
                     if (board.colors[possibleMovePoint.Y][possibleMovePoint.X] != PlayerId)
                     {
                         cellCount++;
@@ -173,7 +181,7 @@ namespace mob_ai_csharp
 
                     if (board.colors[possibleMovePoint.Y][possibleMovePoint.X] == OponentID)
                     {
-                        cellCount += .9;
+                        cellCount += 1;
                     }
 
                     board.colors[possibleMovePoint.Y][possibleMovePoint.X] = PlayerId;
