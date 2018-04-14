@@ -166,7 +166,7 @@ namespace mob_ai_csharp
                     if (plays > 1)
                     {
                         Move move;
-                        (move, hipoScores) = GetBestMove(newBoard, plays - 1, hipoScores);
+                        (move, hipoScores) = GetBestMove(newBoard, plays - 1, hipoScores, actionTypes);
                     }
 
                     //if (bestMove == null || Enumerable.Range(0, bestScore.Count).Select(x => bestScore.Count - x - 1).Select(x => bestScore[x] - hipoScores[x]).FirstOrDefault(x => x != 0) < 0)
