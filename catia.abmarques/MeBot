@@ -180,9 +180,10 @@ namespace mob_ai_csharp
                 var possibleAction = ActionDirections[actionOp];
                 var nextMoveY = mePos[0] + possibleAction[0];
                 int nextMoveX = mePos[1] + possibleAction[1];
-                if (nextMoveY >= 0 && nextMoveY <= boardState.height
-                    && nextMoveX >= 0 && nextMoveX <= boardState.height
-                    && boardState.colors[nextMoveY][nextMoveX] != PlayerId)
+                if (nextMoveY >= 0 && nextMoveY < boardState.height
+                    && nextMoveX >= 0 && nextMoveX < boardState.width
+                    && boardState.colors[nextMoveY][nextMoveX] != PlayerId
+                    && !IsPosOccupied(boardState, possibleAction[0], possibleAction[1]))
                 {
                     var weight = boardState.colors[nextMoveY][nextMoveX] == null ? 1 : 2;
                     possiblePlays.Add(CreateWeightActionDirection(actionOp, weight));
@@ -195,6 +196,20 @@ namespace mob_ai_csharp
         private List<int> CreateWeightActionDirection(int direction, int weight)
         {
             return new List<int> { direction, weight };
+        }
+
+        /// <summary>
+        /// Whether there's someone on (x,y)
+        /// </summary>
+        /// <param name="board"></param>
+        /// <param name="posY"></param>
+        /// <param name="posX"></param>
+        /// <returns></returns>
+        private bool IsPosOccupied(Board board, int posY, int posX)
+        {
+            return board.player_positions.Keys.Where(key => key != PlayerId)
+                                            .Any(player => board.player_positions[player][0] == posY
+                                                        && board.player_positions[player][1] == posX);
         }
     }
 }
