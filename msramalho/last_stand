@@ -123,7 +123,7 @@ class State:
     def myScore(self):
         return self.scores[self.me]
 
-    #ge the score for mu opponent(s)
+    # get the score for my opponent(s)
     def opponentScore(self):
         return sum(self.scores[k] for k in self.scores if k > 0 and k != self.me)
 
@@ -245,6 +245,13 @@ class State:
         return "turns_left: %d\nplayers: %s,\nboard: %s" % (self.turns_left, self.players, self.board)
 
 
+# def isMoveWalk(move):
+#     return move["type"] == "walk"
+# def isMoveShoot(move):
+#     return move["type"] == "shoot"
+# def sameDir(move1, move2):
+#     return np.array_equal(move1["direction"], move2["direction"])
+
 ##################################################################
 
 ROOT = None  # the search tree root
@@ -253,7 +260,7 @@ ROOT = None  # the search tree root
 # very important: Node.state.moves holds all the moves that have not been expanded
 # Node.children holds all the Nodes resulting from popping a move from Node.state.moves
 class Node(object):
-    MAX_DEPTH = 4  # max depth for the simulation
+    MAX_DEPTH = 3  # max depth for the simulation
     C = 1.4  # learning rate, bigger means more exploration
 
     ID = 0
@@ -267,19 +274,24 @@ class Node(object):
         self.move = move  # the move made that led to this state
         self.expanded = False
         self.best_child = None  # node value evaluated by heuristic function for the board
-
+        self.best_child_heuristic = 0
+        self.best_child_score = 0
         # debug stuff
         self.id = Node.ID
         Node.ID += 1
         if parent:
+            self.depth = parent.depth + 1
             self.heuristic = self.getGreedyHeuristic()  # node value evaluated by heuristic function for the board
+            self.improvement_accumulated = 0  # accumulated improvement for the best child (excluding this node)
             self.improvement = self.getImprovement()   # improvement from parent
             self.past_positions = parent.past_positions[:]  # list oof tuples (position, improvement) to use for redundancy clear
             self.past_positions.append((self.state.myPos(), self.improvement))
-            # back prop if applicable
-            self.backprop(self.state.iWon(), self)
+            # with Timer("backprop"):
+            self.backprop(self.state.iWon())  # back prop if applicable
         else:  # for the root
+            self.improvement = 0  # TODO remove after debug in updateBestChild print
             self.past_positions = []
+            self.depth = 0
 
     # get the best move for the explored states from the current Node
     def getNextMove(self):
@@ -291,6 +303,13 @@ class Node(object):
 
     # given a node with past_positions, check if this node is redundant
     def isRedundant(self):
+        # remove shots that get nothing
+        if self.improvement == 0 and self.move["type"] == "shoot":
+            return True
+        # if this move is shoot (improvement=1) and the next is walk for the same dir
+        if self.parent.move is not None and self.parent.move["type"] == "shoot" and self.move["type"] == "walk" and self.improvement == 1 and np.array_equal(self.parent.move["direction"], self.move["direction"]):
+            return True
+        # crop redundant nodes
         my_pos = self.state.myPos()
         for prev_pos, prev_imp in self.past_positions[:-1]:
             if prev_imp == 0 and prev_pos == prev_imp:
@@ -301,6 +320,7 @@ class Node(object):
 
     def getImprovement(self):
         # p("opponent score: %d" % self.state.opponentScore())
+        # return self.state.myScore() - self.parent.state.myScore()
         return 8 * (self.state.myScore() - self.parent.state.myScore()) - 2 * (self.state.opponentScore() - self.parent.state.opponentScore())
 
     # get the value (wins/plays ratio) for this node
@@ -313,7 +333,7 @@ class Node(object):
         b = self.best_child
         if b.improvement == 0 and b.move["type"] == "shoot":
             b.move["type"] = "walk"
-        # p("BEST: %s, improvement: %d" % (b, b.improvement))
+        # p("BEST: %s, improvement: %d, best: %d" % (b, b.improvement, b.getBestImprovement()))
         return b
         # return max(self.children, key=lambda c: c.heuristic)
 
@@ -336,29 +356,38 @@ class Node(object):
             # p("NONE -> i am simulating")
             self.run_simulation()
 
+    # get the accumulated improvement of a node (current  + best_child)
+    def getBestImprovement(self):
+        return self.improvement + self.improvement_accumulated
+
     # expand an unexpanded node -> produce all children
     def expand(self):
         self.expanded = True
         for move in self.state.fixed_moves:
             new_child = Node(self.state.getNewStateAlone(move), self, move)
-            # new_child.isRedundant()
-            if not new_child.isRedundant():
-                # pass
+            if not new_child.isRedundant():  # check that the resulting child is not redundant
                 self.children.append(new_child)
 
     # average the heuristic of this node according to the child's heuristics through backtracking
     def updateBestChild(self, child):
         # p("updating best child for node %d" % self.id)
-        if not self.best_child or child.improvement > self.best_child.improvement or (child.improvement == self.best_child.improvement and child.heuristic > self.best_child.heuristic):
+        if not self.best_child or child.getBestImprovement() > self.best_child_score or (child.getBestImprovement() == self.best_child_score and child.heuristic > self.best_child.heuristic):
+            # p("Node %d(imp=%d) best child(%d): updated from %s, to %s (depth = %s)" % (self.id, self.improvement, child.id, self.best_child.getBestImprovement() if self.best_child else "null", child.getBestImprovement(), child.depth))
             self.best_child = child
+            self.best_child_score = child.getBestImprovement()
+            self.best_child_heuristic = child.heuristic  # TODO: meter no construtor do Node
+            self.improvement_accumulated = self.best_child.getBestImprovement()
 
     # after a simulation, save the result and propagate it back to its parents recursively
-    def backprop(self, victory, child):
+    def backprop(self, victory, child=None):
+        # p("backprop from %d" % child.id)
         self.plays += 1
         if victory:
             self.wins += 1
-        self.updateBestChild(child)
+        if child:  # if a child called this function
+            self.updateBestChild(child)
         if self.parent:
+            # p("backprop from %d to %d with %d" % (self.id, self.parent.id, self.getBestImprovement()))
             self.parent.backprop(victory, self)
 
     # run a NEW simulation for the current node
@@ -401,6 +430,7 @@ def concurrent_mcts():
     while ROOT is None:
         pass
     while True:
+        # with Timer("mcts"):
         ROOT.mcts()
 
 ##################################################################
@@ -437,3 +467,5 @@ class Bot(object):
 
 if __name__ == "__main__":  # pragma: no cover
     multipaint.run(Bot)
+
+# TODO: quando encravam (repetem last >=2 vezes fazer shoot a toda a volta enquanto encravar)
