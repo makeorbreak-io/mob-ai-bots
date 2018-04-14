@@ -1,4 +1,4 @@
-using System;
+ using System;
 using System.Collections.Generic;
 using System.Linq;
 using mob_ai_csharp.multipaint;
@@ -24,6 +24,8 @@ namespace mob_ai_csharp
         private string PlayerId;
         public Random R;
 
+        private Board previousBoard;
+
         private static void Main(string[] args)
         {
             Runner.Run(new Bot());
@@ -44,9 +46,29 @@ namespace mob_ai_csharp
 
             // k
 
+            var isStuck = CheckIfBoardIsEqual(boardState, this.previousBoard);
+
+            var actionTypes = new List<string>(ActionTypes);
+
+            if (isStuck)
+            {
+                var lastMove = boardState.previous_actions.Last()[this.PlayerId];
+                if (lastMove.Type == ActionTypes[0])
+                {
+                    return new Move
+                    {
+                        Type = ActionTypes[1],
+                        Direction = lastMove.Direction
+                    };
+                }
+                actionTypes.Remove(ActionTypes[1]);
+            }
+
+
+
             Move move;
             var scores = new List<int>();
-            (move, scores) = GetBestMove(boardState, Math.Min(boardState.turns_left, 3), scores);
+            (move, scores) = GetBestMove(boardState, Math.Min(boardState.turns_left, 3), scores, actionTypes);
 
             if (scores.Last() == GetScoreDifference(boardState))
             {
@@ -55,6 +77,34 @@ namespace mob_ai_csharp
 
             return move;
         }
+
+        private bool CheckIfBoardIsEqual(Board boardState, Board previousBoard)
+        {
+            if(previousBoard == null)
+            {
+                return false;
+            }
+
+            if (!boardState.player_positions.All(x => IsSamePosition(previousBoard.player_positions[x.Key], x.Value)))
+            {
+                return false;
+            }
+
+            for (int i = 0; i < boardState.height; i++)
+            {
+                for (int j = 0; j < boardState.width; j++)
+                {
+                    if(boardState.colors[i][j] != previousBoard.colors[i][j])
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        }
+
+        private bool IsSamePosition(List<int> p1, List<int> p2) => p1[0] == p2[0] && p1[1] == p2[1];
 
         private (Move, int) GetMoveTowards(Board board, int targetY, int targetX)
         {
@@ -102,11 +152,11 @@ namespace mob_ai_csharp
             return bestMove;
         }
 
-        public (Move, List<int>) GetBestMove(Board board, int plays, List<int> currentScores)
+        public (Move, List<int>) GetBestMove(Board board, int plays, List<int> currentScores, List<string> actionTypes)
         {
             List<int> bestScore = null;
             Move bestMove = null;
-            foreach (var action in ActionTypes)
+            foreach (var action in actionTypes)
             {
                 foreach (var direction in ActionDirections)
                 {
