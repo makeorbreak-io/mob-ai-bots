@@ -50,6 +50,10 @@ possible_directions = [
     np.array([1, -1]), np.array([1,  0]), np.array([1,  1])
 ]
 
+
+def equal_move(m1, m2):
+    return m1["type"] == m2["type"] and np.array_equal(m1["direction"], m2["direction"])
+
 #---------------------------------------------STATE
 # height = number of rows
 # width  = number of columns
@@ -199,12 +203,18 @@ class State:
         # TODO: heuristic based on closeness od painted cells to center, the closer, the better,
         # return 0.6 * my_squares - 0.3 * opponents_squares - 0.1 * empty_squares
 
-    # given a numpy array, get the ratio of my cells over the others in that matrix, if empty return 0
+    # given a numpy array, get the ratio of my cells over the others in that matrix, if all mine return 0
     def matrixRatio(self, matrix):
         not_mine = np.count_nonzero(matrix != self.me)  # count not mine
         empty = np.count_nonzero(matrix == -1)  # count empty
+        opponents = not_mine - empty
+        total = max(matrix.size, 1)
         # explore more towards enemy cells than towards empty cells
-        return 0.6 * ((not_mine - empty) / max(matrix.size, 1)) + 0.4 * (empty / max(matrix.size, 1))
+        return 0.6 * (opponents / total) + 0.4 * (empty / total)
+
+    # return true if the given matrix is all mine
+    def matrixMine(self, matrix):
+        return np.count_nonzero(matrix == self.me) == matrix.size
 
     # given a direction return the submatrix of the corresponding quadrante
     def getSubmatrixFromDirection(self, direction):
@@ -241,16 +251,13 @@ class State:
     def getRandomMove(self):
         return self.moves.pop()
 
+    # given the current state and another, return true if they have the same board and same player positions
+    def hasChanged(self, state):
+        return any(not np.array_equal(self.players[p], state.players[p]) for p in self.players) or not np.array_equal(self.board, state.board)
+
     def __repr__(self):
         return "turns_left: %d\nplayers: %s,\nboard: %s" % (self.turns_left, self.players, self.board)
 
-
-# def isMoveWalk(move):
-#     return move["type"] == "walk"
-# def isMoveShoot(move):
-#     return move["type"] == "shoot"
-# def sameDir(move1, move2):
-#     return np.array_equal(move1["direction"], move2["direction"])
 
 ##################################################################
 
@@ -260,7 +267,7 @@ ROOT = None  # the search tree root
 # very important: Node.state.moves holds all the moves that have not been expanded
 # Node.children holds all the Nodes resulting from popping a move from Node.state.moves
 class Node(object):
-    MAX_DEPTH = 3  # max depth for the simulation
+    MAX_DEPTH = 1  # max depth for the simulation
     C = 1.4  # learning rate, bigger means more exploration
 
     ID = 0
@@ -276,6 +283,7 @@ class Node(object):
         self.best_child = None  # node value evaluated by heuristic function for the board
         self.best_child_heuristic = 0
         self.best_child_score = 0
+        self.unchanged = 0  # for how long is this the same state
         # debug stuff
         self.id = Node.ID
         Node.ID += 1
@@ -293,13 +301,32 @@ class Node(object):
             self.past_positions = []
             self.depth = 0
 
+    def printRecursive(self):
+        p(self)
+        if self.best_child:
+            self.getBestValueChild().printRecursive()
+
     # get the best move for the explored states from the current Node
     def getNextMove(self):
         if len(self.children) == 0:
             best = self.state.fixed_moves[0]  # random move, because they are shuffled
+        elif self.unchanged >= 1:
+            best = self.getBestShootExcept(self.getBestValueChild()).move
         else:
+            # self.printRecursive()
             best = self.getBestValueChild().move  # my best child
         return best  # my move in that child, 0 indexed, IDS are not
+
+    # get the best shoot from the current position
+    def getBestShootExcept(self, ignore):
+        return max([child for child in self.children if child.move["type"] == "shoot" and not equal_move(child.move,ignore.move)], key=lambda c: c.getImprovement())
+
+    # given a move, see if it is redundant for the current node
+    def isMoveRedundant(self, move):
+        # remove moves towards matrices I dominate
+        if self.state.matrixMine(self.state.getSubmatrixFromDirection(move["direction"])):
+            return True
+        return False
 
     # given a node with past_positions, check if this node is redundant
     def isRedundant(self):
@@ -319,9 +346,8 @@ class Node(object):
         return False
 
     def getImprovement(self):
-        # p("opponent score: %d" % self.state.opponentScore())
-        # return self.state.myScore() - self.parent.state.myScore()
-        return 8 * (self.state.myScore() - self.parent.state.myScore()) - 2 * (self.state.opponentScore() - self.parent.state.opponentScore())
+        return self.state.myScore() - self.parent.state.myScore()
+        # return 8 * (self.state.myScore() - self.parent.state.myScore()) - 2 * (self.state.opponentScore() - self.parent.state.opponentScore())
 
     # get the value (wins/plays ratio) for this node
     def getValue(self):
@@ -364,9 +390,10 @@ class Node(object):
     def expand(self):
         self.expanded = True
         for move in self.state.fixed_moves:
-            new_child = Node(self.state.getNewStateAlone(move), self, move)
-            if not new_child.isRedundant():  # check that the resulting child is not redundant
-                self.children.append(new_child)
+            if not self.isMoveRedundant(move):  # check if this move is not redundant
+                new_child = Node(self.state.getNewStateAlone(move), self, move)
+                if not new_child.isRedundant():  # check that the resulting child is not redundant
+                    self.children.append(new_child)
 
     # average the heuristic of this node according to the child's heuristics through backtracking
     def updateBestChild(self, child):
@@ -414,11 +441,12 @@ class Node(object):
 
         # get the ratio of cells different than me in the pointing direction
         sub_matrix = s.getSubmatrixFromDirection(self.move["direction"])
-        ratio = s.matrixRatio(sub_matrix)
+        # ratio = s.matrixRatio(sub_matrix)
 
-        return ratio  # * (sub_matrix.size / self.board.size)
+        return sub_matrix.size #ratio * (sub_matrix.size / self.state.board.size)
 
     def __repr__(self):
+        return "NODE %2d, depth: %d, improvement: %d, move: %s" % (self.id, self.depth, self.improvement, self.move)
         if self.plays > 0:
             return "NODE %d: wins/plays = %d/%d = %.1f, value = %d, UCT: %.2f, children = %d, unexplored = %d" % (self.id, self.wins, self.plays, (100 * self.wins / self.plays), self.getValue(), self.getUCT(), len(self.children), len(self.state.moves))
         else:
@@ -430,7 +458,6 @@ def concurrent_mcts():
     while ROOT is None:
         pass
     while True:
-        # with Timer("mcts"):
         ROOT.mcts()
 
 ##################################################################
@@ -455,12 +482,20 @@ class Bot(object):
             pass
         return c
 
-    def next_move(self, s):  # pragma: no cover
+    def load_root(self, s):
         global ROOT
+        state = State(s, self.player_id)  # tipically 0.1 ms
+        # if no root is set or if the previous state is not the same as the current
+        if not ROOT or ROOT.state.hasChanged(state):
+            ROOT = Node(state)
+        else:
+            ROOT.unchanged += 1
+            ROOT.state.turns_left += 1
+
+    def next_move(self, s):  # pragma: no cover
         # with Timer("next_move"):
         start = default_timer()
-        self.state = State(s, self.player_id)  # tipically 0.1 ms
-        ROOT = Node(self.state)
+        self.load_root(s)
         self.smart_sleep(start)
         return self.clearChoice(ROOT.getNextMove())
 
