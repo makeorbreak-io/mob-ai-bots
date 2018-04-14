@@ -97,7 +97,7 @@ namespace mob_ai_csharp
             var myPosition = board.player_positions[this.PlayerId];
 
             var yDifference = myPosition[0] - enemyPosition[0];
-            var xDifference = myPosition[1] - enemyPosition[0];
+            var xDifference = myPosition[1] - enemyPosition[1];
 
             if(yDifference == 0 || xDifference == 0 || Math.Abs(yDifference) == Math.Abs(xDifference))
             {
