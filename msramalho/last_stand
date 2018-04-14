@@ -1,3 +1,5 @@
+# @msramalho
+
 from __future__ import division
 import sys
 import os
@@ -52,8 +54,15 @@ possible_directions = [
 
 
 def equal_move(m1, m2):
-    return m1["type"] == m2["type"] and np.array_equal(m1["direction"], m2["direction"])
+    return m1["type"] == m2["type"] and equal_dir(m1, m2)
 
+
+def equal_dir(m1, m2):
+    return np.array_equal(m1["direction"], m2["direction"])
+
+
+def manhattan(p1, p2):
+    return abs(p1[0] - p2[0]) + abs(p1[1] - p2[1])
 #---------------------------------------------STATE
 # height = number of rows
 # width  = number of columns
@@ -174,7 +183,6 @@ class State:
         state.turns_left -= 1
 
         my_id = state.me
-        # p(action)
         if action["type"] == "walk":
             state.players[my_id] += action["direction"]  # sum pos with dir to give new pos
             pos = state.players[my_id]
@@ -191,17 +199,6 @@ class State:
         state.loadMoves()
 
         return state
-
-    # given the current game state evaluate the value of the board
-    def getHeuristic(self):
-        total_squares = self.rows * self.columns
-        my_squares = self.scores[self.me]
-        empty_squares = self.scores[-1]  # ignore objects
-        opponents_squares = total_squares - my_squares - empty_squares
-        return 8 * my_squares - 2 * opponents_squares
-        # return (my_squares - opponents_squares) / total_squares
-        # TODO: heuristic based on closeness od painted cells to center, the closer, the better,
-        # return 0.6 * my_squares - 0.3 * opponents_squares - 0.1 * empty_squares
 
     # given a numpy array, get the ratio of my cells over the others in that matrix, if all mine return 0
     def matrixRatio(self, matrix):
@@ -255,6 +252,12 @@ class State:
     def hasChanged(self, state):
         return any(not np.array_equal(self.players[p], state.players[p]) for p in self.players) or not np.array_equal(self.board, state.board)
 
+    # given the current state get the distance to the (one) opponent
+    def getDistanceOpponent(self):
+        other_players = list(players.keys())
+        other_players.remove(self.me)
+        return manhattan(players[self.me], players[other_players[0]])
+
     def __repr__(self):
         return "turns_left: %d\nplayers: %s,\nboard: %s" % (self.turns_left, self.players, self.board)
 
@@ -267,8 +270,8 @@ ROOT = None  # the search tree root
 # very important: Node.state.moves holds all the moves that have not been expanded
 # Node.children holds all the Nodes resulting from popping a move from Node.state.moves
 class Node(object):
-    MAX_DEPTH = 1  # max depth for the simulation
-    C = 1.4  # learning rate, bigger means more exploration
+    MAX_DEPTH = 3  # max depth for the simulation
+    C = 1.6  # learning rate, bigger means more exploration
 
     ID = 0
 
@@ -310,6 +313,8 @@ class Node(object):
     def getNextMove(self):
         if len(self.children) == 0:
             best = self.state.fixed_moves[0]  # random move, because they are shuffled
+        elif self.unchanged >= 4:
+            best = self.state.fixed_moves[0]
         elif self.unchanged >= 1:
             best = self.getBestShootExcept(self.getBestValueChild()).move
         else:
@@ -319,12 +324,18 @@ class Node(object):
 
     # get the best shoot from the current position
     def getBestShootExcept(self, ignore):
-        return max([child for child in self.children if child.move["type"] == "shoot" and not equal_move(child.move,ignore.move)], key=lambda c: c.getImprovement())
+        all_shots_except = [child for child in self.children if child.move["type"] == "shoot" and not equal_move(child.move, ignore.move)]
+        if len(all_shots_except) == 0:  # if there are no shots available
+            all_shots_except = [child for child in self.children if not equal_move(child.move, ignore.move)]
+        return max(all_shots_except, key=lambda c: c.getImprovement())
 
     # given a move, see if it is redundant for the current node
     def isMoveRedundant(self, move):
         # remove moves towards matrices I dominate
         if self.state.matrixMine(self.state.getSubmatrixFromDirection(move["direction"])):
+            return True
+        # remove shot if it is the same as before
+        if self.move and self.move["type"] == "shot" == move["type"] and equal_dir(self.move, move):
             return True
         return False
 
@@ -334,7 +345,7 @@ class Node(object):
         if self.improvement == 0 and self.move["type"] == "shoot":
             return True
         # if this move is shoot (improvement=1) and the next is walk for the same dir
-        if self.parent.move is not None and self.parent.move["type"] == "shoot" and self.move["type"] == "walk" and self.improvement == 1 and np.array_equal(self.parent.move["direction"], self.move["direction"]):
+        if self.parent.move is not None and self.parent.move["type"] == "shoot" and self.move["type"] == "walk" and self.improvement == 1 and equal_dir(self.parent.move, self.move):
             return True
         # crop redundant nodes
         my_pos = self.state.myPos()
@@ -346,8 +357,11 @@ class Node(object):
         return False
 
     def getImprovement(self):
-        return self.state.myScore() - self.parent.state.myScore()
-        # return 8 * (self.state.myScore() - self.parent.state.myScore()) - 2 * (self.state.opponentScore() - self.parent.state.opponentScore())
+        # return self.state.myScore() - self.parent.state.myScore()
+        # heuristic_part = self.state.getDistanceOpponent() / self.state.rows + self.state.columns
+        # return 0.9 * improvement_part - 0.1 * heuristic_part
+        improvement_part = 0.8 * (self.state.myScore() - self.parent.state.myScore()) + 0.2 * max(0, (self.parent.state.opponentScore() - self.state.opponentScore()))
+        return improvement_part
 
     # get the value (wins/plays ratio) for this node
     def getValue(self):
@@ -441,9 +455,9 @@ class Node(object):
 
         # get the ratio of cells different than me in the pointing direction
         sub_matrix = s.getSubmatrixFromDirection(self.move["direction"])
-        # ratio = s.matrixRatio(sub_matrix)
+        ratio = s.matrixRatio(sub_matrix)
 
-        return sub_matrix.size #ratio * (sub_matrix.size / self.state.board.size)
+        return ratio  # * (sub_matrix.size / self.state.board.size)
 
     def __repr__(self):
         return "NODE %2d, depth: %d, improvement: %d, move: %s" % (self.id, self.depth, self.improvement, self.move)
@@ -503,4 +517,3 @@ class Bot(object):
 if __name__ == "__main__":  # pragma: no cover
     multipaint.run(Bot)
 
-# TODO: quando encravam (repetem last >=2 vezes fazer shoot a toda a volta enquanto encravar)
