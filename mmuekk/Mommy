@@ -1,6 +1,5 @@
-using System;
-using System.Linq;
 using mob_ai_csharp.multipaint;
+using System.Linq;
 
 namespace BotUsingTheirApi
 {
@@ -49,7 +48,16 @@ namespace BotUsingTheirApi
 
                 foreach (var option in options)
                 {
-                    if (GameTools.DidIWon(this.PlayerId, boardState))
+                    //apply in board
+                    var boardclonned = CloneTools.Cloning(boardState);
+
+                    var myCurrentPos = new Point(boardState.player_positions[this.PlayerId][1],
+                        boardState.player_positions[this.PlayerId][0]);
+
+                    GameTools.ExcuteMove(PlayerId, boardclonned, option, myCurrentPos);
+
+                    //evaluate
+                    if (GameTools.DidIWon(boardclonned, this.PlayerId))
                         return option;
                 }
 
@@ -59,10 +67,128 @@ namespace BotUsingTheirApi
 
         public class GameTools
         {
-            public static bool DidIWon(string playerId, Board board)
+            public static string Oponent(Board board, string playerId)
             {
-                return board.colors.Sum(p => p.Count(x => x == playerId)) >
-                       board.colors.Sum(p => p.Count(x => x != playerId));
+                var players = board.player_positions.Keys;
+                return players.FirstOrDefault(p => p != playerId);
+            }
+
+            public static bool DidIWon(Board board, string playerId)
+            {
+                var oponent = Oponent(board, playerId);
+
+                return CountPoints(board, playerId) > CountPoints(board, oponent);
+            }
+
+            public static int CountPoints(Board board, string playerId)
+            {
+                return board.colors.Sum(p => p.Count(x => x == playerId));
+            }
+
+            public static int CountMyPoints(Board board, string playerId)
+            {
+                return CountPoints(board, playerId);
+            }
+
+            public static int CountOponentPoints(Board board, string playerId)
+            {
+                var oponent = Oponent(board, playerId);
+                return CountPoints(board, oponent);
+            }
+
+            public static int CountEmptyPoints(Board board)
+            {
+                return CountPoints(board, "");
+            }
+
+            public static bool IsMySquare(string playerId, Board boardState, Point myCurrentPosition) =>
+                boardState.colors[myCurrentPosition.Y][myCurrentPosition.X] == playerId;
+
+            public static bool IsEnemySquare(string playerId, Board boardState, Point point) =>
+                boardState.colors[point.Y][point.X] == boardState.player_positions.FirstOrDefault(x => x.Key != playerId).Key;
+
+            private static bool OutOfBounds(Point point, Board boardState)
+            {
+                return point.X < 0 || point.X >= boardState.width || point.Y < 0 || point.Y >= boardState.height;
+            }
+
+            public static Point ExecuteWalkMove(List<int> move, Point cP) => new Point(cP.X + move[1], cP.Y + move[0]);
+
+            public static (Board, Point, double) ExcuteMove(string playerId, Board board, Move move, Point modifiablePosition)
+            {
+                var OponentID = Oponent(board, playerId);
+                var guysPos = board.player_positions.FirstOrDefault(x => x.Key != playerId);
+                var guysPoint = new Point(guysPos.Value[0], guysPos.Value[1]);
+
+                var cellCount = 0.0;
+                if (move.Type == ActionType.Walk.ToString())
+                {
+                    var possibleMovePoint = ExecuteWalkMove(move.Direction, modifiablePosition);
+
+                    if (!OutOfBounds(possibleMovePoint, board))
+                    {
+                        if (possibleMovePoint == guysPoint)
+                        {
+                            cellCount -= 1;
+                        }
+
+                        if (board.colors[possibleMovePoint.Y][possibleMovePoint.X] != playerId)
+                        {
+                            cellCount++;
+                        }
+
+                        if (board.colors[possibleMovePoint.Y][possibleMovePoint.X] == OponentID)
+                        {
+                            cellCount += 1;
+                        }
+
+                        board.colors[possibleMovePoint.Y][possibleMovePoint.X] = playerId;
+                        modifiablePosition = possibleMovePoint;
+                    }
+                }
+                else
+                {
+                    var reverseAttackDirection = new List<int> { -move.Direction[0], -move.Direction[1] };
+
+                    var atackSquare = ExecuteWalkMove(move.Direction, modifiablePosition);
+                    var behindSquare = ExecuteWalkMove(reverseAttackDirection, modifiablePosition);
+
+                    while (!OutOfBounds(behindSquare, board) && !OutOfBounds(atackSquare, board) && board.colors[behindSquare.Y][behindSquare.X] == playerId)
+                    {
+                        if (board.colors[atackSquare.Y][atackSquare.X] != playerId)
+                        {
+                            cellCount++;
+                        }
+
+                        if (board.colors[atackSquare.Y][atackSquare.X] == OponentID)
+                        {
+                            cellCount++;
+                        }
+
+                        board.colors[atackSquare.Y][atackSquare.X] = playerId;
+
+                        atackSquare = ExecuteWalkMove(move.Direction, atackSquare);
+                        behindSquare = ExecuteWalkMove(reverseAttackDirection, behindSquare);
+                    }
+                }
+
+                return (board, modifiablePosition, cellCount);
+            }
+        }
+
+        public class Point
+        {
+            public int X { get; set; }
+            public int Y { get; set; }
+
+            public Point()
+            {
+            }
+
+            public Point(int x, int y)
+            {
+                this.X = x;
+                this.Y = y;
             }
         }
 
@@ -169,20 +295,28 @@ namespace BotUsingTheirApi
                 {
                     case Direction.Down:
                         return new List<int> { 1, 0 };
+
                     case Direction.UpLeft:
                         return new List<int> { -1, -1 };
+
                     case Direction.Left:
                         return new List<int> { 0, -1 };
+
                     case Direction.DownLeft:
                         return new List<int> { 1, -1 };
+
                     case Direction.Up:
                         return new List<int> { -1, 0 };
+
                     case Direction.UpRight:
                         return new List<int> { -1, 1 };
+
                     case Direction.Right:
                         return new List<int> { 0, 1 };
+
                     case Direction.DownRight:
                         return new List<int> { 1, 1 };
+
                     default:
                         throw new NotSupportedException();
                 }
@@ -194,8 +328,10 @@ namespace BotUsingTheirApi
                 {
                     case ActionType.Shoot:
                         return "shoot";
+
                     case ActionType.Walk:
                         return "walk";
+
                     default:
                         throw new NotSupportedException();
                 }
@@ -215,6 +351,7 @@ namespace BotUsingTheirApi
                     Direction.UpLeft,
                 };
             }
+
             public static List<ActionType> GetActionsAsList()
             {
                 return new List<ActionType>()
