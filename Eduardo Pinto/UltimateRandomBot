@@ -13,9 +13,9 @@ public class Bot implements multipaint.Bot {
     private int[][] positionHistory;
     private int turns = -1;
     private int currentTurn = 0;
-    private boolean isStuck;
-    private boolean stay = false;
+    private boolean isStuck = false;
     private int shootingFactor = 1;
+    private boolean winning = false;
     private Map<String, int[]> paintedHistory;
 
 
@@ -31,6 +31,8 @@ public class Bot implements multipaint.Bot {
     }
 
     private void init(Board state) {
+        isStuck = false;
+        shootingFactor = 1;
         if (turns == -1)
             turns = state.turns_left;
 
@@ -48,14 +50,12 @@ public class Bot implements multipaint.Bot {
         width = state.width;
     }
 
-    boolean amIWinning() {
+    private boolean amIWinning() {
+        int our = paintedHistory.get(playerId)[currentTurn];
+
         return paintedHistory.entrySet().stream()
-                .filter(entry -> entry.getKey() != null)
-                .map(entry -> new AbstractMap.SimpleEntry<>(entry.getKey(), entry.getValue()[currentTurn]))
-                .max(Map.Entry.comparingByValue())
-                .get()
-                .getKey()
-                .equals(playerId);
+                .filter(entry -> entry.getKey() != null && !entry.getKey().equals(playerId))
+                .noneMatch(entry -> entry.getValue()[currentTurn] >= our);
     }
 
     private void updatePaintedHistory(Board state) {
@@ -83,6 +83,7 @@ public class Bot implements multipaint.Bot {
         int[] currentPos = state.player_positions.get(playerId);
         positionHistory[currentTurn] = currentPos;
         updatePaintedHistory(state);
+        winning = amIWinning();
 
         System.err.println("\n\n##############\nTurns left:" + state.turns_left + " -- painted squares: " + paintedHistory.get(playerId)[currentTurn] + " -- free squares " + paintedHistory.get(null)[currentTurn]);
 
@@ -91,12 +92,12 @@ public class Bot implements multipaint.Bot {
                     posEquals(directionHistory[currentTurn-1], directionHistory[currentTurn-2]) &&
                     posEquals(positionHistory[currentTurn-1], positionHistory[currentTurn-2]);
 
-            if (isStuck && amIWinning()) {
+            if (isStuck) {
                 shootingFactor = 2;
                 System.err.println("$$$$$$$$$$$$$$ STUCK & WINNING!!!!");
             }
         }
-        
+
         Action a = new Action();
 
         int[][] points = classifyPosition(state, currentPos);
@@ -119,7 +120,7 @@ public class Bot implements multipaint.Bot {
             a.type = ActionTypes[0];
         }
 
-        if (walkPoints[indexes[7]] <= 0 && shootPoints[indexesShoot[7]] <= 0 && !stay) {
+        if (walkPoints[indexes[7]] <= 0 && shootPoints[indexesShoot[7]] <= 0 && (!isStuck || !winning)) {
             a.type = ActionTypes[1];
             String closestOpponent = findClosestOpponent(state.player_positions);
             a.direction = moveCloserToOpponent(closestOpponent, state.player_positions.get(closestOpponent), currentPos);
@@ -140,7 +141,7 @@ public class Bot implements multipaint.Bot {
         for (int i = 0; i < ActionDirections.length; i++) {
             int[] nextPos = new int[]{currentPos[0] + ActionDirections[i][0], currentPos[1] + ActionDirections[i][1]};
             points[0][i] = classifyWalk(ActionDirections[i], nextPos, state.colors, state.player_positions);
-            points[1][i] = classifyShoot(ActionDirections[i], currentPos, state.colors, state.player_positions);
+            points[1][i] = classifyShoot(ActionDirections[i], currentPos, state.colors, state.player_positions) * shootingFactor;
         }
 
         return points;
@@ -186,7 +187,7 @@ public class Bot implements multipaint.Bot {
         //if (surroundedIfShoot(paintPos, currentPos, colors))
             //points -= 1;
 
-        return points * shootingFactor;
+        return points;
     }
 
     private int evalShooting(int[] actionDir, int[] currentPos, String[][] colors, Map<String, int[]> players, String player) {
@@ -245,8 +246,8 @@ public class Bot implements multipaint.Bot {
         else
             points -= 2;
 
-        if (isAtBorder(nextPos, colors))
-            points -= 1;
+        //if (isAtBorder(nextPos, colors))
+            //points -= 1;
 
         if (isOccupiedByOpponent(nextPos, players, playerId))
             points -= 2;
@@ -329,7 +330,4 @@ public class Bot implements multipaint.Bot {
         Runner.run(new Bot());
     }
 
-
-    // TODO: identify profiles of opponents
-    // TODO: change points calculation with depth and number of plays
 }
