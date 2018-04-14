@@ -89,22 +89,24 @@ namespace mob_ai_csharp
             List<List<int>> possiblePlays = new List<List<int>>();//Y,X,weight
 
             //them corners
-            if ((mePos[0] == boardState.height && mePos[1] == 0)
+            if ((mePos[0] == boardState.height-1 && mePos[1] == 0)
                 || ( mePos[0] == 0 && mePos[1] == 0)
-                || (mePos[0] == 0 && mePos[1] == boardState.width)
-                || (mePos[0] == boardState.height && mePos[1] == boardState.width)
+                || (mePos[0] == 0 && mePos[1] == boardState.width-1)
+                || (mePos[0] == boardState.height-1 && mePos[1] == boardState.width-1)
                 )
             {
                 return null;
             }
 
             //on west side of the board
-            if (mePos[1] > boardState.width / 2)
+            if (mePos[1] > boardState.width / 2 && mePos[1] != boardState.width-1)
             {
                 //get positions to the right
                 int paintedPosNr = 0;
-                Enumerable.Range(mePos[1], boardState.width - mePos[1]).ToList()
-                    .ForEach(posX => { if (boardState.colors[mePos[0]][posX] == PlayerId) { paintedPosNr++; } });
+                bool stop = false;
+                Enumerable.Range(mePos[1]+1, boardState.width - mePos[1]).ToList()
+                    .ForEach(posX => { if (stop) return;
+                                        if (boardState.colors[mePos[0]][posX] == PlayerId) { paintedPosNr++; } else stop = true; });
 
                 int weight = 0;
                 var lastnotPaintedPos = new List<int>();
@@ -129,8 +131,11 @@ namespace mob_ai_csharp
             else //on est side of the board
             {
                 int paintedPosNr = 0;
-                Enumerable.Range(0, mePos[1]).ToList()
-                    .ForEach(posX => { if (boardState.colors[mePos[0]][posX] == PlayerId) { paintedPosNr++; } });
+                bool stop = false;
+                Enumerable.Range(0, mePos[1]).Reverse().ToList()
+                    .ForEach(posX => {
+                        if (stop) return;
+                        if (boardState.colors[mePos[0]][posX] == PlayerId) { paintedPosNr++; } else stop = true; });
 
                 int weight = 0;
                 var lastnotPaintedPos = new List<int>();
@@ -154,12 +159,15 @@ namespace mob_ai_csharp
                 }
             }
             //on south side of the board
-            if (mePos[0] > boardState.height / 2)
+            if (mePos[0] > boardState.height / 2 && mePos[0] != boardState.height - 1)
             {
                 //get positions painted below me
                 int paintedPosNr = 0;
-                Enumerable.Range(mePos[0], boardState.height - mePos[0]).ToList()
-                    .ForEach(posY => { if (boardState.colors[posY][mePos[1]] == PlayerId) { paintedPosNr++; } });
+                bool stop = false;
+                Enumerable.Range(mePos[0]+1, boardState.height - mePos[0]).ToList()
+                    .ForEach(posY => {
+                        if (stop) return;
+                        if (boardState.colors[posY][mePos[1]] == PlayerId) { paintedPosNr++; } else stop = true; });
 
                 int weight = 0;
                 var lastnotPaintedPos = new List<int>();
@@ -184,9 +192,10 @@ namespace mob_ai_csharp
             else //on north side of the board
             {
                 int paintedPosNr = 0;
+                bool stop = false;
                 //positions above me
-                Enumerable.Range(0, mePos[0]).ToList()
-                    .ForEach(posY => { if (boardState.colors[posY][mePos[1]] == PlayerId) { paintedPosNr++; } });
+                Enumerable.Range(0, mePos[0]).Reverse().ToList()
+                    .ForEach(posY => { if (stop) return; if (boardState.colors[posY][mePos[1]] == PlayerId) { paintedPosNr++; } else stop = true; });
 
                 int weight = 0;
                 var lastnotPaintedPos = new List<int>();
