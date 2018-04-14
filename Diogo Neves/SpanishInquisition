@@ -15,13 +15,13 @@ namespace mob_ai_csharp
         public List<List<int>> ActionDirections = new List<List<int>>()
         {
             new List<int> {-1, -1}, //UPLEFT
-            new List<int> {0, -1}, //LEFT
-            new List<int> {1, -1}, //DOWNLEFT
-            new List<int> {-1, 0}, //UP
-            new List<int> {1, 0}, //DOWN
-            new List<int> {-1, 1}, //UPRIGHT
-            new List<int> {0, 1}, //RIGHT
-            new List<int> {1, 1}, //DOWNRIGHT
+            new List<int> {0, -1},  //LEFT
+            new List<int> {1, -1},  //DOWNLEFT
+            new List<int> {-1, 0},  //UP
+            new List<int> {1, 0},   //DOWN
+            new List<int> {-1, 1},  //UPRIGHT
+            new List<int> {0, 1},   //RIGHT
+            new List<int> {1, 1},   //DOWNRIGHT
         };
 
         private string PlayerId;
@@ -68,8 +68,13 @@ namespace mob_ai_csharp
 
             if (myLastMoves.Count > 2)
             {
-                // Someone will see this code and probably kill me ..
-                if (myLastMoves[myLastMoves.Count - 1].Direction[0] == myLastMoves[myLastMoves.Count - 2].Direction[0] && myLastMoves[myLastMoves.Count - 1].Direction[1] == myLastMoves[myLastMoves.Count - 2].Direction[1])
+                var mlm = myLastMoves;
+
+                var condition = mlm[mlm.Count - 1].Direction[0] == mlm[mlm.Count - 2].Direction[0]
+                    && mlm[mlm.Count - 1].Direction[1] == mlm[mlm.Count - 2].Direction[1]
+                    && mlm[mlm.Count - 1].Type == mlm[mlm.Count - 2].Type;
+
+                if (condition)
                 {
                     return new Move
                     {
@@ -84,7 +89,7 @@ namespace mob_ai_csharp
 
         private Move GetNewMove(Board boardState, Point myCurrentPosition, int v)
         {
-            var permutations = GetPermutations();
+            var permutations = GetPermutations(v);
 
             var theChosenOne = EvaluatePermutations(permutations, boardState, myCurrentPosition);
 
@@ -93,7 +98,7 @@ namespace mob_ai_csharp
 
         private Move EvaluatePermutations(List<List<Move>> permutations, Board board, Point myCurrentPosition)
         {
-            var hg = 0;
+            var hg = 0.0;
             var selectedMove = new Move() { Direction = ActionDirections[0], Type = ActionTypes[0] };
 
             var a = permutations.Where(x => x[0].Type == ActionTypes[0]);
@@ -101,12 +106,12 @@ namespace mob_ai_csharp
             foreach (var moves in permutations)
             {
                 var modifiablePosition = new Point(myCurrentPosition.X, myCurrentPosition.Y);
-                var cellCount = 0;
+                var cellCount = 0.0;
                 var board2 = CreateNewBoard(board);
 
                 foreach (var move in moves)
                 {
-                    var partialCount = 0;
+                    var partialCount = 0.0;
                     (board2, modifiablePosition, partialCount) = ExcuteMove(board2, move, modifiablePosition);
 
                     cellCount += partialCount;
@@ -141,9 +146,9 @@ namespace mob_ai_csharp
             };
         }
 
-        private (Board, Point, int) ExcuteMove(Board board, Move move, Point modifiablePosition)
+        private (Board, Point, double) ExcuteMove(Board board, Move move, Point modifiablePosition)
         {
-            var cellCount = 0;
+            var cellCount = 0.0;
             if (move.Type == ActionTypes[1])
             {
                 var possibleMovePoint = ExecuteWalkMove(move.Direction, modifiablePosition);
@@ -157,7 +162,7 @@ namespace mob_ai_csharp
 
                     if (board.colors[possibleMovePoint.Y][possibleMovePoint.X] == OponentID)
                     {
-                        cellCount++;
+                        cellCount += .9;
                     }
 
                     board.colors[possibleMovePoint.Y][possibleMovePoint.X] = PlayerId;
@@ -193,7 +198,7 @@ namespace mob_ai_csharp
             return (board, modifiablePosition, cellCount);
         }
 
-        private List<List<Move>> GetPermutations()
+        private List<List<Move>> GetPermutations(int depth)
         {
             //TODO: plz do a recursion in this part... or kill yourself before someone sees this code kthxbye;
             // I srsly Hope no one sees this before I change this...
@@ -227,9 +232,22 @@ namespace mob_ai_csharp
             return fullPermList;
         }
 
+        public IEnumerator<Move> GetActions()
+        {
+            for (int i = 0; i < ActionDirections.Count; i++)
+            {
+                for (int j = 0; j < ActionTypes.Count; j++)
+                {
+                    yield return new Move { Direction = ActionDirections[i], Type = ActionTypes[j] };
+                }
+            }
+        }
+
+        //G stands for G
         public List<Move> G(string type) => Enumerable.Range(0, ActionDirections.Count)
             .Select(x => new Move { Direction = ActionDirections[x], Type = type }).ToList();
 
+        // Always have a BackUp Plan just in case
         private Move BackUpMove(Point myCurrentPos, Board boardState)
         {
             var dic = new Dictionary<List<int>, double>();
@@ -253,45 +271,6 @@ namespace mob_ai_csharp
             move.Direction = dic.OrderBy(x => x.Value).FirstOrDefault().Key;
 
             return move;
-        }
-
-        private Move GetNextAttack(Board boardState, Point myCurrentPosition)
-        {
-            var dic = new Dictionary<List<int>, int>();
-            var optimalAttack =
-                new Move() { Direction = ActionDirections[0], Type = ActionTypes[0] }; // Random Move vvery not hardcoded;
-
-            for (int i = 0; i < ActionDirections.Count; i++)
-            {
-                var newPoint = ExecuteWalkMove(ActionDirections[i], myCurrentPosition);
-
-                var attackDirection = new List<int> { -ActionDirections[i][0], -ActionDirections[i][1] };
-                var attackPoint = ExecuteWalkMove(attackDirection, myCurrentPosition);
-
-                var count = 0;
-
-                while (!OutOfBounds(newPoint, boardState) && !OutOfBounds(attackPoint, boardState) &&
-                       boardState.colors[newPoint.Y][newPoint.X] == PlayerId)
-                {
-                    if (boardState.colors[attackPoint.Y][attackPoint.X] != PlayerId)
-                    {
-                        count++;
-                    }
-
-                    newPoint = ExecuteWalkMove(ActionDirections[i], newPoint);
-                    attackPoint = ExecuteWalkMove(attackDirection, attackPoint);
-                }
-
-                dic[attackDirection] = count;
-            }
-
-            var nSt = dic.Where(x => x.Value >= 2).OrderByDescending(x => x.Value).FirstOrDefault();
-
-            if (nSt.Key == null)
-                return null;
-
-            optimalAttack.Direction = nSt.Key;
-            return optimalAttack;
         }
 
         public bool IsMySquare(Board boardState, Point myCurrentPosition) =>
