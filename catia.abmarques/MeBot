@@ -98,12 +98,11 @@ namespace mob_ai_csharp
                 return null;
             }
 
-            //on right side of the board
-            if (mePos[1] > boardState.width / 2 
-                && mePos[1] != boardState.width-1
+            //shoot left
+            if (mePos[1] != boardState.width-1
                 && boardState.colors[mePos[0]][mePos[1]+1] == PlayerId)
             {
-                //get positions to the right
+                //get positions painted to the right
                 int paintedPosNr = 0;
                 bool stop = false;
                 Enumerable.Range(mePos[1]+1, boardState.width - mePos[1]).ToList()
@@ -130,8 +129,9 @@ namespace mob_ai_csharp
                     }
                 }
             }
-            else //on left side of the board
-            {
+            if (mePos[1] > 0
+                && boardState.colors[mePos[0]][mePos[1] - 1] == PlayerId)
+            { //shoot right
                 int paintedPosNr = 0;
                 bool stop = false;
                 Enumerable.Range(0, mePos[1]).Reverse().ToList()
@@ -160,9 +160,8 @@ namespace mob_ai_csharp
                     }
                 }
             }
-            //on south side of the board
-            if (mePos[0] > boardState.height / 2 
-                && mePos[0] != boardState.height - 1
+            //shoot up
+            if (mePos[0] != boardState.height - 1
                 && boardState.colors[mePos[0]-1][mePos[1]] == PlayerId)
             {
                 //get positions painted below me
@@ -193,8 +192,10 @@ namespace mob_ai_csharp
                     }
                 }
             }
-            else //on north side of the board
+            if (mePos[0] > 0
+                && boardState.colors[mePos[0] - 1][mePos[1]] == PlayerId)
             {
+                //shoot down
                 int paintedPosNr = 0;
                 bool stop = false;
                 //positions above me
