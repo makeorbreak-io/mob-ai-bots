@@ -101,7 +101,7 @@ namespace mob_ai_csharp
             //on right side of the board
             if (mePos[1] > boardState.width / 2 
                 && mePos[1] != boardState.width-1
-                && boardState.colors[mePos[0]][mePos[1]-1] == PlayerId)
+                && boardState.colors[mePos[0]][mePos[1]+1] == PlayerId)
             {
                 //get positions to the right
                 int paintedPosNr = 0;
