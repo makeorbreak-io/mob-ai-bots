@@ -10,6 +10,7 @@ public class Bot implements multipaint.Bot {
     public Random r;
     int[][] paintedInTurn = null;
     private Action[] moves = null;
+    private Action[] validMoves = null;
     private List<Integer> scores = new ArrayList<>();
     private List<Map<String, int[]>> positions = new ArrayList<>();
     private int mine;
@@ -312,14 +313,15 @@ public class Bot implements multipaint.Bot {
         }
 
         // Build all possible moves.
-        if (moves == null) {
-            moves = new Action[16];
+        if (this.moves == null) {
+            this.moves = new Action[16];
+            this.validMoves = new Action[16];
             for (int i = 0; i < 2; i++) {
                 for (int j = 0; j < 8; j++) {
                     Action a = new Action();
                     a.type = this.ActionTypes[i];
                     a.direction = this.ActionDirections[j];
-                    moves[i * 8 + j] = a;
+                    this.moves[i * 8 + j] = a;
                 }
             }
         }
@@ -346,30 +348,34 @@ public class Bot implements multipaint.Bot {
         long bestScore = Long.MIN_VALUE;
         Map<Action, Long> scores = new HashMap<>();
 
-        long e = System.nanoTime();
         long nSims = 0;
+        int nValid = 0;
+        for (int i = 0; i < moves.length; i++) {
+            if (validMove(state, playerId, moves[i])) {
+                this.validMoves[nValid++] = moves[i];
+            }
+        }
 
+        long e = System.nanoTime();
         while (e - s < 400000000) {
-            for (int i = 0; i < moves.length; i++) {
-                if (validMove(state, playerId, moves[i])) {
-                    Long totScore = scores.get(moves[i]);
-                    if (totScore == null)
-                        totScore = 0l;
-                    Board next = state;
-                    do {
-                        Map<String, Action> actions = new HashMap<>();
-                        for (String player : this.players) {
-                            if (player.equals(playerId) && next.turns_left == state.turns_left)
-                                actions.put(player, moves[i]);
-                            else
-                                actions.put(player, randomMove(next, player));
-                        }
-                        next = next(next, actions);
-                    } while (next.turns_left > 0 && (state.turns_left - next.turns_left) < 10);
-                    totScore += customScore(next, state);
-                    scores.put(moves[i], totScore);
-                    nSims++;
-                }
+            for (int i = 0; i < nValid; i++) {
+                Long totScore = scores.get(this.validMoves[i]);
+                if (totScore == null)
+                    totScore = 0l;
+                Board next = state;
+                do {
+                    Map<String, Action> actions = new HashMap<>();
+                    for (String player : this.players) {
+                        if (player.equals(playerId) && next.turns_left == state.turns_left)
+                            actions.put(player, this.validMoves[i]);
+                        else
+                            actions.put(player, randomMove(next, player));
+                    }
+                    next = next(next, actions);
+                } while (next.turns_left > 0 && (state.turns_left - next.turns_left) < 10);
+                totScore += customScore(next, state);
+                scores.put(this.validMoves[i], totScore);
+                nSims++;
             }
             e = System.nanoTime();
         }
@@ -383,7 +389,7 @@ public class Bot implements multipaint.Bot {
             }
         }
 
-        //System.err.println("Ran " + nSims + " simulations.");
+        //System.err.println("I Ran " + nSims + " simulations.");
 
         return bestAction;
     }
