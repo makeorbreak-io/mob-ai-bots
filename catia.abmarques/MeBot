@@ -88,21 +88,14 @@ namespace mob_ai_csharp
             var mePos = boardState.player_positions[this.PlayerId];//Y,X
             List<List<int>> possiblePlays = new List<List<int>>();//Y,X,weight
 
-            if (mePos[0] == boardState.height)
+            //them corners
+            if ((mePos[0] == boardState.height && mePos[1] == 0)
+                || ( mePos[0] == 0 && mePos[1] == 0)
+                || (mePos[0] == 0 && mePos[1] == boardState.width)
+                || (mePos[0] == boardState.height && mePos[1] == boardState.width)
+                )
             {
-                if (mePos[1] == boardState.width || mePos[1] + 1 == boardState.width
-                    || mePos[1] == 0 || mePos[1] - 1 == 0) //right/left side of the board
-                {
-                    return null;
-                }
-                //bellow wall
-                //var positionsLeftColorMe = new List<List<int>>() { new List<int>() { mePos[0], mePos[1] - 1 }, new List<int>() { mePos[0], mePos[1] - 2 } };
-                //if (boardState.colors[mePos[0]][mePos[1] - 1] != PlayerId &&
-                //    boardState.colors[mePos[0]][mePos[1] - 2] != PlayerId
-                //    && boardState.colors[mePos[0][1])
-                //{
-                //}
-                //possiblePlays.Add(new List<int>() { ActionDirections[3][0], ActionDirections[3][1], weight);
+                return null;
             }
 
             //on west side of the board
@@ -174,70 +167,29 @@ namespace mob_ai_csharp
                     }
                 }
             }
-            return possiblePlays?.OrderByDescending(play => play[2]).FirstOrDefault();
+            return possiblePlays?.OrderByDescending(play => play[1]).FirstOrDefault();
         }
 
         private List<int> BestWalkOption(Board boardState)
         {
             var mePos = boardState.player_positions[this.PlayerId];//Y,X
             List<List<int>> possiblePlays = new List<List<int>>();//Y,X,weight
-            if (mePos[0] + 1 <= boardState.height && boardState.colors[mePos[0] + 1][mePos[1]] != PlayerId)
+
+            for (int actionOp = 0; actionOp < ActionDirections.Count; actionOp++)
             {
-                //down
-                var weight = boardState.colors[mePos[0] + 1][mePos[1]] == null ? 1 : 2;
-                possiblePlays.Add(CreateWeightActionDirection(4, weight));
+                var possibleAction = ActionDirections[actionOp];
+                var nextMoveY = mePos[0] + possibleAction[0];
+                int nextMoveX = mePos[1] + possibleAction[1];
+                if (nextMoveY >= 0 && nextMoveY <= boardState.height
+                    && nextMoveX >= 0 && nextMoveX <= boardState.height
+                    && boardState.colors[nextMoveY][nextMoveX] != PlayerId)
+                {
+                    var weight = boardState.colors[nextMoveY][nextMoveX] == null ? 1 : 2;
+                    possiblePlays.Add(CreateWeightActionDirection(actionOp, weight));
+                }
             }
-            if (mePos[0] - 1 >= 0 && boardState.colors[mePos[0] - 1][mePos[1]] != PlayerId)
-            {
-                //up
-                var weight = boardState.colors[mePos[0] - 1][mePos[1]] == null ? 1 : 2;
-                possiblePlays.Add(CreateWeightActionDirection(3, weight));
-            }
-            if (mePos[1] + 1 <= boardState.width && boardState.colors[mePos[0]][mePos[1] + 1] != PlayerId)
-            {
-                //right
-                var weight = boardState.colors[mePos[0]][mePos[1] + 1] == null ? 1 : 2;
-                possiblePlays.Add(CreateWeightActionDirection(6, weight));
-            }
-            if (mePos[1] - 1 >= 0 && boardState.colors[mePos[0]][mePos[1] - 1] != PlayerId)
-            {
-                //left
-                var weight = boardState.colors[mePos[0]][mePos[1] - 1] == null ? 1 : 2;
-                possiblePlays.Add(CreateWeightActionDirection(1, weight));
-            }
-            if (mePos[0] + 1 <= boardState.height
-                && mePos[1] - 1 >= 0
-                && boardState.colors[mePos[0]+1][mePos[1]-1] != PlayerId)
-            {
-                //southwest
-                var weight = boardState.colors[mePos[0]+1][mePos[1]-1] == null ? 1 : 2;
-                possiblePlays.Add(CreateWeightActionDirection(2, weight));
-            }
-            if (mePos[1] - 1 >= 0
-                && mePos[0] - 1 >= 0
-                && boardState.colors[mePos[0]-1][mePos[1]-1] != PlayerId)
-            {
-                //northwest
-                var weight = boardState.colors[mePos[0]-1][mePos[1]-1] == null ? 1 : 2;
-                possiblePlays.Add(CreateWeightActionDirection(0, weight));
-            }
-            if (mePos[0] - 1 >= 0
-                && mePos[1] + 1 <= boardState.width
-                && boardState.colors[mePos[0]-1][mePos[1] + 1] != PlayerId)
-            {
-                //northest
-                var weight = boardState.colors[mePos[0]-1][mePos[1] + 1] == null ? 1 : 2;
-                possiblePlays.Add(CreateWeightActionDirection(5, weight));
-            }
-            if (mePos[0] + 1 <= boardState.height
-                && mePos[1] + 1 <= boardState.width
-                && boardState.colors[mePos[0] + 1][mePos[1] + 1] != PlayerId)
-            {
-                //southest
-                var weight = boardState.colors[mePos[0] + 1][mePos[1] + 1] == null ? 1 : 2;
-                possiblePlays.Add(CreateWeightActionDirection(7, weight));
-            }
-            return possiblePlays?.OrderByDescending(play => play[2]).FirstOrDefault();
+
+            return possiblePlays?.OrderByDescending(play => play[1]).FirstOrDefault();
         }
 
         private List<int> CreateWeightActionDirection(int direction, int weight)
