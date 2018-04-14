@@ -9,17 +9,12 @@ from timeit import default_timer
 from itertools import product
 from copy import deepcopy
 from collections import defaultdict
-from random import choice
 from math import log, sqrt
 import datetime
 import numpy as np
 from time import sleep
-# from threading import Lock
-import signal
 
 import multipaint
-
-# function names camelCase -  properties names snake_case
 
 #---------------------------------------------UTILS
 sys.setrecursionlimit(3000)
@@ -256,7 +251,7 @@ ROOT = None  # the search tree root
 
 
 # very important: Node.state.moves holds all the moves that have not been expanded
-# Node.children holds all the Nodes resulting from poping a move from Node.state.moves
+# Node.children holds all the Nodes resulting from popping a move from Node.state.moves
 class Node(object):
     MAX_DEPTH = 4  # max depth for the simulation
     C = 1.4  # learning rate, bigger means more exploration
@@ -419,7 +414,7 @@ class Bot(object):
 
     # make this move last as long as possible
     def smart_sleep(self, start):
-        max_sleep = 0.46 - (default_timer() - start)
+        max_sleep = 0.44 - (default_timer() - start)
         sleep(max_sleep)
         # p("start = %.4fms, max_sleep = %.4fms, total: %.4fms, " % (start / 1000, max_sleep, (default_timer() - start)))
 
