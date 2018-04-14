@@ -1,0 +1,247 @@
+using System;
+using System.Linq;
+using mob_ai_csharp.multipaint;
+
+namespace BotUsingTheirApi
+{
+    using System;
+    using System.Collections.Generic;
+
+    namespace mob_ai_csharp
+    {
+        public class Bot : IBot
+        {
+            //public List<string> ActionTypes = new List<string>() { "shoot", "walk" };
+
+            //public List<List<int>> ActionDirections = new List<List<int>>()
+            //{
+            //    new List<int>{-1, -1}, // UP LEFT
+            //    new List<int>{ 0, -1}, // LEFT
+            //    new List<int>{ 1, -1}, // DOWN LEFT
+            //    new List<int>{-1, 0}, // UP
+            //    new List<int>{ 1, 0}, // DOWN
+            //    new List<int>{-1, 1}, // UP RIGHT
+            //    new List<int>{ 0, 1}, // RIGHT
+            //    new List<int>{ 1, 1}, // DOWN RIGHT
+            //};
+
+            private string PlayerId;
+            public Random R;
+
+            private static void Main(string[] args)
+            {
+                Runner.Run(new Bot());
+            }
+
+            /// <summary>
+            /// Constructor: Sets the player identifier.
+            /// </summary>
+            /// <param name="playerId">The player identifier.</param>
+            public void SetPlayerId(string playerId)
+            {
+                this.PlayerId = playerId;
+                this.R = new Random();
+            }
+
+            public Move NextMove(Board boardState)
+            {
+                var options = Permutation.GenerateMovesAndShoots();
+
+                foreach (var option in options)
+                {
+                    if (GameTools.DidIWon(this.PlayerId, boardState))
+                        return option;
+                }
+
+                return null;
+            }
+        }
+
+        public class GameTools
+        {
+            public static bool DidIWon(string playerId, Board board)
+            {
+                return board.colors.Sum(p => p.Count(x => x == playerId)) >
+                       board.colors.Sum(p => p.Count(x => x != playerId));
+            }
+        }
+
+        public class Permutation
+        {
+            public static List<Move> GenerateMovesAndShoots()
+            {
+                var output = new List<Move>();
+
+                foreach (var action in DirectionsActionsTools.GetActionsAsList())
+                {
+                    foreach (var direction in DirectionsActionsTools.GetDirectionsAsList())
+                    {
+                        output.Add(new Move()
+                        {
+                            Direction = DirectionsActionsTools.ConvertDirection2Vector(direction),
+                            Type = DirectionsActionsTools.ConvertActionType2String(action)
+                        });
+                    }
+                }
+
+                return output;
+            }
+        }
+
+        public static class CloneTools
+        {
+            public static Move Cloning(Move original)
+            {
+                return new Move()
+                {
+                    Type = original.Type,
+                    Direction = original.Direction.ToList()
+                };
+            }
+
+            public static Board Cloning(Board original)
+            {
+                var output = new Board
+                {
+                    height = original.height,
+                    turns_left = original.turns_left,
+                    width = original.width,
+                    colors = new List<List<string>>(),
+                    player_positions = new Dictionary<string, List<int>>(),
+                    previous_actions = new List<Dictionary<string, Move>>()
+                };
+
+                foreach (var item in original.colors)
+                {
+                    output.colors.Add(item.ToList());
+                }
+
+                foreach (var item in original.player_positions)
+                {
+                    output.player_positions.Add(item.Key, item.Value.ToList());
+                }
+
+                foreach (var item in original.previous_actions)
+                {
+                    output.previous_actions.Add(item.ToDictionary(entry => entry.Key,
+                        entry => Cloning(entry.Value)));
+                }
+
+                return output;
+            }
+
+            public static IList<T> Clone<T>(this IList<T> listToClone) where T : ICloneable
+            {
+                return listToClone.Select(item => (T)item.Clone()).ToList();
+            }
+        }
+
+        public class DirectionsActionsTools
+        {
+            public static string ConvertDirectionVector2String(List<int> direction)
+            {
+                if (direction.Count != 2)
+                    throw new NotSupportedException();
+
+                if (direction[0] == -1 && direction[1] == -1)
+                    return "UP LEFT";
+                if (direction[0] == 0 && direction[1] == -1)
+                    return "LEFT";
+                if (direction[0] == 1 && direction[1] == -1)
+                    return "DOWN LEFT";
+                if (direction[0] == -1 && direction[1] == 0)
+                    return "UP";
+                if (direction[0] == 1 && direction[1] == 0)
+                    return "DOWN";
+                if (direction[0] == -1 && direction[1] == 1)
+                    return "UP RIGHT";
+                if (direction[0] == 0 && direction[1] == 1)
+                    return "RIGHT";
+                if (direction[0] == 1 && direction[1] == 1)
+                    return "DOWN RIGHT";
+
+                throw new NotSupportedException();
+            }
+
+            public static List<int> ConvertDirection2Vector(Direction direction)
+            {
+                switch (direction)
+                {
+                    case Direction.Down:
+                        return new List<int> { 1, 0 };
+                    case Direction.UpLeft:
+                        return new List<int> { -1, -1 };
+                    case Direction.Left:
+                        return new List<int> { 0, -1 };
+                    case Direction.DownLeft:
+                        return new List<int> { 1, -1 };
+                    case Direction.Up:
+                        return new List<int> { -1, 0 };
+                    case Direction.UpRight:
+                        return new List<int> { -1, 1 };
+                    case Direction.Right:
+                        return new List<int> { 0, 1 };
+                    case Direction.DownRight:
+                        return new List<int> { 1, 1 };
+                    default:
+                        throw new NotSupportedException();
+                }
+            }
+
+            public static string ConvertActionType2String(ActionType action)
+            {
+                switch (action)
+                {
+                    case ActionType.Shoot:
+                        return "shoot";
+                    case ActionType.Walk:
+                        return "walk";
+                    default:
+                        throw new NotSupportedException();
+                }
+            }
+
+            public static List<Direction> GetDirectionsAsList()
+            {
+                return new List<Direction>()
+                {
+                    Direction.Up,
+                    Direction.UpRight,
+                    Direction.Right,
+                    Direction.DownRight,
+                    Direction.Down,
+                    Direction.DownLeft,
+                    Direction.Left,
+                    Direction.UpLeft,
+                };
+            }
+            public static List<ActionType> GetActionsAsList()
+            {
+                return new List<ActionType>()
+                {
+                    ActionType.Shoot,
+                    ActionType.Walk
+                };
+            }
+        }
+
+        public enum ActionType
+        {
+            Shoot,
+            Walk
+        }
+
+        public enum Direction
+        {
+            Up = 0,
+            UpRight = 1,
+            Right = 2,
+            DownRight = 3,
+            Down = 4,
+            DownLeft = 5,
+            Left = 6,
+            UpLeft = 7,
+            NoMove = 8
+        }
+    }
+}
