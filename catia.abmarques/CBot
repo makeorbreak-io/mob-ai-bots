@@ -38,39 +38,50 @@ namespace mob_ai_csharp
         public Move NextMove(Board boardState)
         {
             Move move = new Move();
-
-            var bestShoot = BestShootOption(boardState);
-            var bestWalkDir = BestWalkOption(boardState);
-
-            if ((bestShoot == null || !bestShoot.Any())
-                && (bestWalkDir == null || !bestWalkDir.Any()))
+            try
             {
-                move.Type = this.ActionTypes[1];
+
+
+                var bestShoot = BestShootOption(boardState);
+                var bestWalkDir = BestWalkOption(boardState);
+
+                if ((bestShoot == null || !bestShoot.Any())
+                    && (bestWalkDir == null || !bestWalkDir.Any()))
+                {
+                    move.Type = this.ActionTypes[1];
+                    move.Direction = this.ActionDirections[this.R.Next(8)];
+                    return move;
+                }
+                if (bestShoot == null || !bestShoot.Any())
+                {
+                    move.Type = this.ActionTypes[1];
+                    move.Direction = this.ActionDirections[bestWalkDir[0]];
+                    return move;
+                }
+                if (bestWalkDir == null || !bestWalkDir.Any())
+                {
+                    move.Type = this.ActionTypes[0];
+                    move.Direction = this.ActionDirections[bestShoot[0]];
+                    return move;
+                }
+
+                if (bestShoot[1] > bestWalkDir[1])
+                {
+                    move.Type = this.ActionTypes[0];
+                    move.Direction = this.ActionDirections[bestShoot[0]];
+                }
+                else
+                {
+                    move.Type = this.ActionTypes[1];
+                    move.Direction = this.ActionDirections[bestWalkDir[0]];
+
+                }
+            }catch(Exception ex)
+            {
+                //damn
+                move.Type = this.ActionTypes[this.R.Next(2)];
                 move.Direction = this.ActionDirections[this.R.Next(8)];
-                return move;
-            }
-            if (bestShoot == null || !bestShoot.Any())
-            {
-                move.Type = this.ActionTypes[1];
-                move.Direction = this.ActionDirections[bestWalkDir[0]];
-                return move;
-            }
-            if (bestWalkDir == null || !bestWalkDir.Any())
-            {
-                move.Type = this.ActionTypes[0];
-                move.Direction = this.ActionDirections[bestShoot[0]];
-                return move;
-            }
 
-            if(bestShoot[1] > bestWalkDir[1])
-            {
-                move.Type = this.ActionTypes[0];
-                move.Direction = this.ActionDirections[bestShoot[0]];
-            }else
-            {
-                move.Type = this.ActionTypes[1];
-                move.Direction = this.ActionDirections[bestWalkDir[0]];
-                
             }
             return move;
         }
