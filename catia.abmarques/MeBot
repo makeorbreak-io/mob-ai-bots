@@ -1,0 +1,248 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using mob_ai_csharp.multipaint;
+
+namespace mob_ai_csharp
+{
+    public class Bot : IBot
+    {
+        public List<string> ActionTypes = new List<string>() { "shoot", "walk" };
+
+        public List<List<int>> ActionDirections = new List<List<int>>()
+        {
+            new List<int>{-1, -1}, //0 Up Left
+            new List<int>{ 0, -1}, //1 Left
+            new List<int>{ 1, -1}, //2 Down Left
+            new List<int>{-1,  0}, //3 Up
+            new List<int>{ 1,  0}, //4 Down
+            new List<int>{-1,  1}, //5 Up Right
+            new List<int>{ 0,  1}, //6 Right
+            new List<int>{ 1,  1}, //7 Down Right
+        };
+
+        private string PlayerId;
+        public Random R;
+
+        private static void Main(string[] args)
+        {
+            Runner.Run(new Bot());
+        }
+
+        public void SetPlayerId(string playerId)
+        {
+            this.PlayerId = playerId;
+            this.R = new Random();
+        }
+
+        public Move NextMove(Board boardState)
+        {
+            Move move = new Move();
+
+            var bestShoot = BestShootOption(boardState);
+            var bestWalkDir = BestWalkOption(boardState);
+
+            if ((bestShoot == null || !bestShoot.Any())
+                && (bestWalkDir == null || !bestWalkDir.Any()))
+            {
+                move.Type = this.ActionTypes[1];
+                move.Direction = this.ActionDirections[this.R.Next(8)];
+                return move;
+            }
+            if (bestShoot == null || !bestShoot.Any())
+            {
+                move.Type = this.ActionTypes[1];
+                move.Direction = this.ActionDirections[bestWalkDir[0]];
+                return move;
+            }
+            if (bestWalkDir == null || !bestWalkDir.Any())
+            {
+                move.Type = this.ActionTypes[0];
+                move.Direction = this.ActionDirections[bestShoot[0]];
+                return move;
+            }
+
+            if(bestShoot[1] > bestWalkDir[1])
+            {
+                move.Type = this.ActionTypes[0];
+                move.Direction = this.ActionDirections[bestShoot[0]];
+            }else
+            {
+                move.Type = this.ActionTypes[1];
+                move.Direction = this.ActionDirections[bestWalkDir[0]];
+                
+            }
+            return move;
+        }
+        
+        /// <summary>
+        /// Returns the best shoot option.
+        /// Its not working for sideways
+        /// </summary>
+        /// <param name="boardState">State of the board.</param>
+        /// <returns>List&lt;System.Int32&gt;.</returns>
+        private List<int> BestShootOption(Board boardState)
+        {
+            //shoot
+            //Am I surrounded by all me?
+            var mePos = boardState.player_positions[this.PlayerId];//Y,X
+            List<List<int>> possiblePlays = new List<List<int>>();//Y,X,weight
+
+            if (mePos[0] == boardState.height)
+            {
+                if (mePos[1] == boardState.width || mePos[1] + 1 == boardState.width
+                    || mePos[1] == 0 || mePos[1] - 1 == 0) //right/left side of the board
+                {
+                    return null;
+                }
+                //bellow wall
+                //var positionsLeftColorMe = new List<List<int>>() { new List<int>() { mePos[0], mePos[1] - 1 }, new List<int>() { mePos[0], mePos[1] - 2 } };
+                //if (boardState.colors[mePos[0]][mePos[1] - 1] != PlayerId &&
+                //    boardState.colors[mePos[0]][mePos[1] - 2] != PlayerId
+                //    && boardState.colors[mePos[0][1])
+                //{
+                //}
+                //possiblePlays.Add(new List<int>() { ActionDirections[3][0], ActionDirections[3][1], weight);
+            }
+
+            //on west side of the board
+            if (mePos[1] > boardState.width / 2)
+            {
+                //get positions to the right
+                int paintedPosNr = 0;
+                Enumerable.Range(mePos[1], boardState.width).ToList()
+                    .ForEach(posX => { if (boardState.colors[mePos[0]][posX] == PlayerId) { paintedPosNr++; } });
+                var lastnotPaintedPos = Enumerable.Range(0, mePos[1]).ToList().Where(posX => boardState.colors[mePos[0]][posX] != PlayerId);
+                if (lastnotPaintedPos != null && lastnotPaintedPos.Any())
+                {
+                    if (mePos[1] - lastnotPaintedPos.First() >= paintedPosNr)
+                    {
+                        int weight = 0;
+                        Enumerable.Range(lastnotPaintedPos.First(), mePos[1]).ToList().ForEach(posX => { if (boardState.colors[mePos[0]][posX] == null) weight++; else if (boardState.colors[mePos[0]][posX] != PlayerId) weight += 2; });
+                        possiblePlays.Add(CreateWeightActionDirection(1, weight)); //left
+                    }
+                }
+            }
+            else //on est side of the board
+            {
+                int paintedPosNr = 0;
+                Enumerable.Range(0, mePos[1]).ToList()
+                    .ForEach(posX => { if (boardState.colors[mePos[0]][posX] == PlayerId) { paintedPosNr++; } });
+                var lastnotPaintedPos = Enumerable.Range(mePos[1], boardState.width).ToList().Where(posX => boardState.colors[mePos[0]][posX] != PlayerId);
+                if (lastnotPaintedPos != null && lastnotPaintedPos.Any())
+                {
+                    if (lastnotPaintedPos.First() - mePos[1] >= paintedPosNr)
+                    {
+                        int weight = 0;
+                        Enumerable.Range(mePos[1],lastnotPaintedPos.First()).ToList().ForEach(posX => { if (boardState.colors[mePos[0]][posX] == null) weight++; else if (boardState.colors[mePos[0]][posX] != PlayerId) weight += 2; });
+                        possiblePlays.Add(CreateWeightActionDirection(6, weight));//right
+                    }
+                }
+            }
+            //on south side of the board
+            if (mePos[0] > boardState.height / 2)
+            {
+                //get positions painted below me
+                int paintedPosNr = 0;
+                Enumerable.Range(mePos[0], boardState.height).ToList()
+                    .ForEach(posY => { if (boardState.colors[posY][mePos[0]] == PlayerId) { paintedPosNr++; } });
+                var lastnotPaintedPos = Enumerable.Range(0, mePos[0]).ToList().Where(posY => boardState.colors[posY][mePos[0]] != PlayerId);
+                if (lastnotPaintedPos != null && lastnotPaintedPos.Any())
+                {
+                    if (mePos[0] - lastnotPaintedPos.First() >= paintedPosNr)
+                    {
+                        int weight = 0;
+                        Enumerable.Range(lastnotPaintedPos.First(), mePos[0]).ToList().ForEach(posY => { if (boardState.colors[posY][mePos[0]] == null) weight++; else if (boardState.colors[posY][mePos[0]] != PlayerId) weight += 2; });
+                        possiblePlays.Add(CreateWeightActionDirection(3, weight));//up
+                    }
+                }
+            }
+            else //on north side of the board
+            {
+                int paintedPosNr = 0;
+                //positions above me
+                Enumerable.Range(0, mePos[0]).ToList()
+                    .ForEach(posY => { if (boardState.colors[posY][mePos[0]] == PlayerId) { paintedPosNr++; } });
+                var lastnotPaintedPos = Enumerable.Range(mePos[0], boardState.height).ToList().Where(posY => boardState.colors[posY][mePos[0]] != PlayerId);
+                if (lastnotPaintedPos != null && lastnotPaintedPos.Any())
+                {
+                    if (lastnotPaintedPos.First() - mePos[0] >= paintedPosNr)
+                    {
+                        int weight = 0;
+                        Enumerable.Range(mePos[0],lastnotPaintedPos.First()).ToList().ForEach(posY => { if (boardState.colors[posY][mePos[0]] == null) weight++; else if (boardState.colors[posY][mePos[0]] != PlayerId) weight += 2; });
+                        possiblePlays.Add(CreateWeightActionDirection(4, weight));//down
+                    }
+                }
+            }
+            return possiblePlays?.OrderByDescending(play => play[2]).FirstOrDefault();
+        }
+
+        private List<int> BestWalkOption(Board boardState)
+        {
+            var mePos = boardState.player_positions[this.PlayerId];//Y,X
+            List<List<int>> possiblePlays = new List<List<int>>();//Y,X,weight
+            if (mePos[0] + 1 <= boardState.height && boardState.colors[mePos[0] + 1][mePos[1]] != PlayerId)
+            {
+                //down
+                var weight = boardState.colors[mePos[0] + 1][mePos[1]] == null ? 1 : 2;
+                possiblePlays.Add(CreateWeightActionDirection(4, weight));
+            }
+            if (mePos[0] - 1 >= 0 && boardState.colors[mePos[0] - 1][mePos[1]] != PlayerId)
+            {
+                //up
+                var weight = boardState.colors[mePos[0] - 1][mePos[1]] == null ? 1 : 2;
+                possiblePlays.Add(CreateWeightActionDirection(3, weight));
+            }
+            if (mePos[1] + 1 <= boardState.width && boardState.colors[mePos[0]][mePos[1] + 1] != PlayerId)
+            {
+                //right
+                var weight = boardState.colors[mePos[0]][mePos[1] + 1] == null ? 1 : 2;
+                possiblePlays.Add(CreateWeightActionDirection(6, weight));
+            }
+            if (mePos[1] - 1 >= 0 && boardState.colors[mePos[0]][mePos[1] - 1] != PlayerId)
+            {
+                //left
+                var weight = boardState.colors[mePos[0]][mePos[1] - 1] == null ? 1 : 2;
+                possiblePlays.Add(CreateWeightActionDirection(1, weight));
+            }
+            if (mePos[0] + 1 <= boardState.height
+                && mePos[1] - 1 >= 0
+                && boardState.colors[mePos[0]+1][mePos[1]-1] != PlayerId)
+            {
+                //southwest
+                var weight = boardState.colors[mePos[0]+1][mePos[1]-1] == null ? 1 : 2;
+                possiblePlays.Add(CreateWeightActionDirection(2, weight));
+            }
+            if (mePos[1] - 1 >= 0
+                && mePos[0] - 1 >= 0
+                && boardState.colors[mePos[0]-1][mePos[1]-1] != PlayerId)
+            {
+                //northwest
+                var weight = boardState.colors[mePos[0]-1][mePos[1]-1] == null ? 1 : 2;
+                possiblePlays.Add(CreateWeightActionDirection(0, weight));
+            }
+            if (mePos[0] - 1 >= 0
+                && mePos[1] + 1 <= boardState.width
+                && boardState.colors[mePos[0]-1][mePos[1] + 1] != PlayerId)
+            {
+                //northest
+                var weight = boardState.colors[mePos[0]-1][mePos[1] + 1] == null ? 1 : 2;
+                possiblePlays.Add(CreateWeightActionDirection(5, weight));
+            }
+            if (mePos[0] + 1 <= boardState.height
+                && mePos[1] + 1 <= boardState.width
+                && boardState.colors[mePos[0] + 1][mePos[1] + 1] != PlayerId)
+            {
+                //southest
+                var weight = boardState.colors[mePos[0] + 1][mePos[1] + 1] == null ? 1 : 2;
+                possiblePlays.Add(CreateWeightActionDirection(7, weight));
+            }
+            return possiblePlays?.OrderByDescending(play => play[2]).FirstOrDefault();
+        }
+
+        private List<int> CreateWeightActionDirection(int direction, int weight)
+        {
+            return new List<int> { direction, weight };
+        }
+    }
+}
