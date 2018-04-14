@@ -301,7 +301,7 @@ namespace mob_ai_csharp
 
         private bool OutOfBounds(Point point, Board boardState)
         {
-            return point.X < 0 || point.X >= boardState.height || point.Y < 0 || point.Y >= boardState.width;
+            return point.X < 0 || point.X >= boardState.width || point.Y < 0 || point.Y >= boardState.height;
         }
 
         public Point ExecuteWalkMove(List<int> move, Point cP) => new Point(cP.X + move[1], cP.Y + move[0]);
