@@ -48,6 +48,8 @@ namespace mob_ai_csharp
 
             var isStuck = CheckIfBoardIsEqual(boardState, this.previousBoard);
 
+            previousBoard = boardState;
+
             var actionTypes = new List<string>(ActionTypes);
 
             if (isStuck)
