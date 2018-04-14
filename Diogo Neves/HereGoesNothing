@@ -211,7 +211,7 @@ namespace mob_ai_csharp
                 {
                     if (possibleMovePoint == guysPoint)
                     {
-                        cellCount -= 2;
+                        cellCount -= 10;
                     }
 
                     if (board.colors[possibleMovePoint.Y][possibleMovePoint.X] != PlayerId)
