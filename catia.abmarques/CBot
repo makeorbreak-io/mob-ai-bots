@@ -162,7 +162,7 @@ namespace mob_ai_csharp
             }
             //shoot up
             if (mePos[0] != boardState.height - 1
-                && boardState.colors[mePos[0]-1][mePos[1]] == PlayerId)
+                && boardState.colors[mePos[0]+1][mePos[1]] == PlayerId)
             {
                 //get positions painted below me
                 int paintedPosNr = 0;
@@ -223,7 +223,52 @@ namespace mob_ai_csharp
                     }
                 }
             }
+            var dirDiagonals = new List<List<int>>() {
+                new List<int>() { 0, ActionDirections[0][0], ActionDirections[0][1] },
+                new List<int>() { 2, ActionDirections[2][0], ActionDirections[2][1] },
+                new List<int>() { 5, ActionDirections[5][0], ActionDirections[5][1] },
+                new List<int>() { 7, ActionDirections[7][0], ActionDirections[7][1] },};
+
+            for (int posDirIndex = 0; posDirIndex < dirDiagonals.Count; posDirIndex++)
+            {
+                var set1Y = mePos[0] - dirDiagonals[posDirIndex][1];
+                var set1X = mePos[1] - dirDiagonals[posDirIndex][2];
+                var set2Y = mePos[0] + dirDiagonals[posDirIndex][1];
+                var set2X = mePos[1] + dirDiagonals[posDirIndex][2];
+                if (set1Y - dirDiagonals[posDirIndex][1] >= 0 && set1Y - dirDiagonals[posDirIndex][1] < boardState.height
+                    && set1X - dirDiagonals[posDirIndex][2] >= 0 && set1X - dirDiagonals[posDirIndex][2] < boardState.width
+                    && set2Y + dirDiagonals[posDirIndex][1] >= 0 && set2Y + dirDiagonals[posDirIndex][1] < boardState.height
+                    && set2X + dirDiagonals[posDirIndex][2] >= 0 && set2X + dirDiagonals[posDirIndex][2] < boardState.width
+                    )
+                {
+                    if(IsMyColor(boardState,set1Y,set1X) 
+                        && IsMyColor(boardState, set1Y - dirDiagonals[posDirIndex][1], set1X - dirDiagonals[posDirIndex][2])
+                        && (!IsMyColor(boardState, set2Y, set2X) ||
+                            !IsMyColor(boardState, set2Y + dirDiagonals[posDirIndex][1], set2X + dirDiagonals[posDirIndex][2])))
+                    {
+                        int weight = IsEnemyColor(boardState, set2Y, set2X) ? 2 : IsEmptyColor(boardState, set2Y, set2X) ? 1:0;
+                        weight += IsEnemyColor(boardState , set2Y+ dirDiagonals[posDirIndex][1], set2X + dirDiagonals[posDirIndex][2]) ? 2 
+                                    : IsEmptyColor(boardState, set2Y + dirDiagonals[posDirIndex][1], set2X + dirDiagonals[posDirIndex][2]) ? 1 : 0;
+                        possiblePlays.Add(CreateWeightActionDirection(dirDiagonals[posDirIndex][0], weight));
+
+                    }
+                }
+            }
+            
             return possiblePlays?.OrderByDescending(play => play[1]).FirstOrDefault();
+        }
+
+        private bool IsMyColor(Board boardState, int posY, int posX)
+        {
+            return boardState.colors[posY][posX] == PlayerId;
+        }
+        private bool IsEnemyColor(Board boardState, int posY, int posX)
+        {
+            return !IsMyColor(boardState, posY, posX) && !IsEmptyColor(boardState, posY, posX);
+        }
+        private bool IsEmptyColor(Board boardState, int posY, int posX)
+        {
+            return boardState.colors[posY][posX] == null;
         }
 
         private List<int> BestWalkOption(Board boardState)
