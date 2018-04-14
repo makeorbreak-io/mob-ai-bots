@@ -52,7 +52,9 @@ namespace mob_ai_csharp
 
             var actionTypes = new List<string>(ActionTypes);
 
-            if (isStuck)
+            var (shouldHoldGround, move) = CheckIfShouldHoldGround(boardState);
+
+            if (!shouldHoldGround && isStuck)
             {
                 var lastMove = boardState.previous_actions.Last()[this.PlayerId];
                 if (lastMove.Type == ActionTypes[0])
@@ -63,12 +65,20 @@ namespace mob_ai_csharp
                         Direction = lastMove.Direction
                     };
                 }
+            }
+
+            if(shouldHoldGround || isStuck)
+            {
+                if(move != null)
+                {
+                    return null;
+                }
+
                 actionTypes.Remove(ActionTypes[1]);
             }
 
 
 
-            Move move;
             var scores = new List<int>();
             (move, scores) = GetBestMove(boardState, Math.Min(boardState.turns_left, 3), scores, actionTypes);
 
@@ -78,6 +88,48 @@ namespace mob_ai_csharp
             }
 
             return move;
+        }
+
+        private (bool, Move) CheckIfShouldHoldGround(Board board)
+        {
+            var enemyEntry = board.player_positions.FirstOrDefault(x => x.Key != this.PlayerId);
+            var enemyPosition = enemyEntry.Value;
+            var myPosition = board.player_positions[this.PlayerId];
+
+            var yDifference = myPosition[0] - enemyPosition[0];
+            var xDifference = myPosition[1] - enemyPosition[0];
+
+            if(yDifference == 0 || xDifference == 0 || Math.Abs(yDifference) == Math.Abs(xDifference))
+            {
+                // In line of fire
+                var direction = new List<int> { Normalize(yDifference), Normalize(xDifference) };
+
+                // Check enemy firepower (3 minimum?)
+                var hasEnoughFirepower = true;
+                for (int i = 1; i <= 3; i++)
+                {
+                    var y = enemyPosition[0] - i * direction[0];
+                    var x = enemyPosition[1] - i * direction[1];
+                    if(!IsValidPosition(x,y,board) || board.colors[y][x] != enemyEntry.Key)
+                    {
+                        hasEnoughFirepower = false;
+                    }
+                }
+
+                if (hasEnoughFirepower)
+                {
+                    // Check if in range (2 max?) (if 2 move towards enemy?)
+                    var range = 2;
+                    var (move, distance) = GetMoveTowards(board, enemyPosition[0], enemyPosition[1]);
+                    if(distance <= range)
+                    {
+                        return (true, distance > 1 ? move : null);
+                    }
+                }
+
+            }
+
+            return (false, null);
         }
 
         private bool CheckIfBoardIsEqual(Board boardState, Board previousBoard)
