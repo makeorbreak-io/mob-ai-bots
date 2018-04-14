@@ -24,7 +24,9 @@ namespace BotUsingTheirApi
             //    new List<int>{ 1, 1}, // DOWN RIGHT
             //};
 
-            private string PlayerId;
+            public string PlayerId;
+            public Point CurrentPosition { get; set; }
+
             public Random R;
 
             private static void Main(string[] args)
@@ -46,22 +48,25 @@ namespace BotUsingTheirApi
             {
                 var options = Permutation.GenerateMovesAndShoots();
 
+                var curScore = GameTools.CountMyPoints(boardState, PlayerId);
+
                 foreach (var option in options)
                 {
                     //apply in board
                     var boardclonned = CloneTools.Cloning(boardState);
 
-                    var myCurrentPos = new Point(boardState.player_positions[this.PlayerId][1],
-                        boardState.player_positions[this.PlayerId][0]);
+                    var myCurrentPos = GameTools.MyPosition(boardState, PlayerId);
 
-                    GameTools.ExcuteMove(PlayerId, boardclonned, option, myCurrentPos);
+                    GameTools.ExecuteMove(PlayerId, boardclonned, option, myCurrentPos);
 
                     //evaluate
-                    if (GameTools.DidIWon(boardclonned, this.PlayerId))
+                    var newScore = GameTools.CountMyPoints(boardclonned, PlayerId);
+
+                    if (newScore > curScore)
                         return option;
                 }
 
-                return null;
+                return new Move();
             }
         }
 
@@ -101,29 +106,29 @@ namespace BotUsingTheirApi
                 return CountPoints(board, "");
             }
 
-            public static bool IsMySquare(string playerId, Board boardState, Point myCurrentPosition) =>
-                boardState.colors[myCurrentPosition.Y][myCurrentPosition.X] == playerId;
+            public static bool IsMySquare(string playerId, Board board, Point currentPosition) =>
+                board.colors[currentPosition.Y][currentPosition.X] == playerId;
 
-            public static bool IsEnemySquare(string playerId, Board boardState, Point point) =>
-                boardState.colors[point.Y][point.X] == boardState.player_positions.FirstOrDefault(x => x.Key != playerId).Key;
+            public static bool IsEnemySquare(string playerId, Board board, Point point) =>
+                board.colors[point.Y][point.X] == Oponent(board, playerId);
 
-            private static bool OutOfBounds(Point point, Board boardState)
+            private static bool OutOfBounds(Point point, Board board)
             {
-                return point.X < 0 || point.X >= boardState.width || point.Y < 0 || point.Y >= boardState.height;
+                return point.X < 0 || point.X >= board.width || point.Y < 0 || point.Y >= board.height;
             }
 
-            public static Point ExecuteWalkMove(List<int> move, Point cP) => new Point(cP.X + move[1], cP.Y + move[0]);
+            private static Point ExecuteWalkMove(List<int> move, Point cP) => new Point(cP.X + move[1], cP.Y + move[0]);
 
-            public static (Board, Point, double) ExcuteMove(string playerId, Board board, Move move, Point modifiablePosition)
+            public static double ExecuteMove(string playerId, Board board, Move move, Point currentPosition)
             {
-                var OponentID = Oponent(board, playerId);
+                var oponentId = Oponent(board, playerId);
                 var guysPos = board.player_positions.FirstOrDefault(x => x.Key != playerId);
                 var guysPoint = new Point(guysPos.Value[0], guysPos.Value[1]);
 
                 var cellCount = 0.0;
                 if (move.Type == ActionType.Walk.ToString())
                 {
-                    var possibleMovePoint = ExecuteWalkMove(move.Direction, modifiablePosition);
+                    var possibleMovePoint = ExecuteWalkMove(move.Direction, currentPosition);
 
                     if (!OutOfBounds(possibleMovePoint, board))
                     {
@@ -137,58 +142,47 @@ namespace BotUsingTheirApi
                             cellCount++;
                         }
 
-                        if (board.colors[possibleMovePoint.Y][possibleMovePoint.X] == OponentID)
+                        if (board.colors[possibleMovePoint.Y][possibleMovePoint.X] == oponentId)
                         {
                             cellCount += 1;
                         }
 
                         board.colors[possibleMovePoint.Y][possibleMovePoint.X] = playerId;
-                        modifiablePosition = possibleMovePoint;
+                        currentPosition = possibleMovePoint;
                     }
                 }
                 else
                 {
                     var reverseAttackDirection = new List<int> { -move.Direction[0], -move.Direction[1] };
 
-                    var atackSquare = ExecuteWalkMove(move.Direction, modifiablePosition);
-                    var behindSquare = ExecuteWalkMove(reverseAttackDirection, modifiablePosition);
+                    var attackSquare = ExecuteWalkMove(move.Direction, currentPosition);
+                    var behindSquare = ExecuteWalkMove(reverseAttackDirection, currentPosition);
 
-                    while (!OutOfBounds(behindSquare, board) && !OutOfBounds(atackSquare, board) && board.colors[behindSquare.Y][behindSquare.X] == playerId)
+                    while (!OutOfBounds(behindSquare, board) && !OutOfBounds(attackSquare, board) && board.colors[behindSquare.Y][behindSquare.X] == playerId)
                     {
-                        if (board.colors[atackSquare.Y][atackSquare.X] != playerId)
+                        if (board.colors[attackSquare.Y][attackSquare.X] != playerId)
                         {
                             cellCount++;
                         }
 
-                        if (board.colors[atackSquare.Y][atackSquare.X] == OponentID)
+                        if (board.colors[attackSquare.Y][attackSquare.X] == oponentId)
                         {
                             cellCount++;
                         }
 
-                        board.colors[atackSquare.Y][atackSquare.X] = playerId;
+                        board.colors[attackSquare.Y][attackSquare.X] = playerId;
 
-                        atackSquare = ExecuteWalkMove(move.Direction, atackSquare);
+                        attackSquare = ExecuteWalkMove(move.Direction, attackSquare);
                         behindSquare = ExecuteWalkMove(reverseAttackDirection, behindSquare);
                     }
                 }
 
-                return (board, modifiablePosition, cellCount);
-            }
-        }
-
-        public class Point
-        {
-            public int X { get; set; }
-            public int Y { get; set; }
-
-            public Point()
-            {
+                return cellCount;
             }
 
-            public Point(int x, int y)
+            public static Point MyPosition(Board board, string playerId)
             {
-                this.X = x;
-                this.Y = y;
+                return new Point(board.player_positions[playerId][1], board.player_positions[playerId][0]);
             }
         }
 
@@ -247,10 +241,13 @@ namespace BotUsingTheirApi
                     output.player_positions.Add(item.Key, item.Value.ToList());
                 }
 
-                foreach (var item in original.previous_actions)
+                if (original.previous_actions != null)
                 {
-                    output.previous_actions.Add(item.ToDictionary(entry => entry.Key,
-                        entry => Cloning(entry.Value)));
+                    foreach (var item in original.previous_actions)
+                    {
+                        output.previous_actions.Add(item.ToDictionary(entry => entry.Key,
+                            entry => Cloning(entry.Value)));
+                    }
                 }
 
                 return output;
@@ -359,6 +356,22 @@ namespace BotUsingTheirApi
                     ActionType.Shoot,
                     ActionType.Walk
                 };
+            }
+        }
+
+        public class Point
+        {
+            public int X { get; set; }
+            public int Y { get; set; }
+
+            public Point()
+            {
+            }
+
+            public Point(int x, int y)
+            {
+                this.X = x;
+                this.Y = y;
             }
         }
 
