@@ -313,7 +313,7 @@ class Node(object):
         b = self.best_child
         if b.improvement == 0 and b.move["type"] == "shoot":
             b.move["type"] = "walk"
-        p("BEST: %s, improvement: %d" % (b, b.improvement))
+        # p("BEST: %s, improvement: %d" % (b, b.improvement))
         return b
         # return max(self.children, key=lambda c: c.heuristic)
 
