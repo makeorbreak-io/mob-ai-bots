@@ -71,7 +71,7 @@ namespace mob_ai_csharp
             {
                 if(move != null)
                 {
-                    return null;
+                    return move;
                 }
 
                 actionTypes.Remove(ActionTypes[1]);
