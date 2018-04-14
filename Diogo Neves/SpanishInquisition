@@ -66,14 +66,13 @@ namespace mob_ai_csharp
             MapList2Move(move.Direction);
             myLastMoves.Add(move);
 
-            if (myLastMoves.Count > 2)
+            if (myLastMoves.Count > 3)
             {
                 var mlm = myLastMoves;
 
-                var condition = mlm[mlm.Count - 1].Direction[0] == mlm[mlm.Count - 2].Direction[0]
-                    && mlm[mlm.Count - 1].Direction[1] == mlm[mlm.Count - 2].Direction[1]
-                    && mlm[mlm.Count - 1].Type == mlm[mlm.Count - 2].Type;
+                var condition = AreLast3MovesTheSame(myLastMoves);
 
+                // Remove Randomness
                 if (condition)
                 {
                     return new Move
@@ -85,6 +84,19 @@ namespace mob_ai_csharp
             }
 
             return move;
+        }
+
+        private bool AreLast3MovesTheSame(List<Move> myLastMoves)
+        {
+            var last3 = myLastMoves.Skip(myLastMoves.Count - 3).Take(3).ToList();
+
+            return last3[0].Type == last3[1].Type && last3[0].Type == last3[2].Type && last3[1].Type == last3[2].Type && last3[0].Type == ActionTypes[0]
+                && AreDirectionEqual(last3[0], last3[1]) && AreDirectionEqual(last3[0], last3[2]) && AreDirectionEqual(last3[1], last3[1]);
+        }
+
+        public bool AreDirectionEqual(Move move1, Move move2)
+        {
+            return move1.Direction[0] == move2.Direction[0] && move1.Direction[1] == move2.Direction[1];
         }
 
         private Move GetNewMove(Board boardState, Point myCurrentPosition, int v)
