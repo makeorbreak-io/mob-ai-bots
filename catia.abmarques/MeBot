@@ -103,15 +103,25 @@ namespace mob_ai_csharp
             {
                 //get positions to the right
                 int paintedPosNr = 0;
-                Enumerable.Range(mePos[1], boardState.width).ToList()
+                Enumerable.Range(mePos[1], boardState.width - mePos[1]).ToList()
                     .ForEach(posX => { if (boardState.colors[mePos[0]][posX] == PlayerId) { paintedPosNr++; } });
-                var lastnotPaintedPos = Enumerable.Range(0, mePos[1]).ToList().Where(posX => boardState.colors[mePos[0]][posX] != PlayerId);
-                if (lastnotPaintedPos != null && lastnotPaintedPos.Any())
+
+                int weight = 0;
+                var lastnotPaintedPos = new List<int>();
+                Enumerable.Range(0, mePos[1]).ToList()
+                                        .ForEach(posX => 
+                                        {
+                                            if (IsPosOccupied(boardState, mePos[0], posX))
+                                            { weight = 0; lastnotPaintedPos = new List<int>(); }
+                                            else
+                                                { if (boardState.colors[mePos[0]][posX] != PlayerId)
+                                                    { lastnotPaintedPos.Add(posX); weight += boardState.colors[mePos[0]][posX] == null ? 1 : 2; }
+                                                }
+                                        });
+                if (paintedPosNr != 0 && lastnotPaintedPos.Any())
                 {
-                    if (mePos[1] - lastnotPaintedPos.First() >= paintedPosNr)
+                    if (mePos[1] - lastnotPaintedPos.First() <= paintedPosNr)
                     {
-                        int weight = 0;
-                        Enumerable.Range(lastnotPaintedPos.First(), mePos[1]).ToList().ForEach(posX => { if (boardState.colors[mePos[0]][posX] == null) weight++; else if (boardState.colors[mePos[0]][posX] != PlayerId) weight += 2; });
                         possiblePlays.Add(CreateWeightActionDirection(1, weight)); //left
                     }
                 }
@@ -121,13 +131,24 @@ namespace mob_ai_csharp
                 int paintedPosNr = 0;
                 Enumerable.Range(0, mePos[1]).ToList()
                     .ForEach(posX => { if (boardState.colors[mePos[0]][posX] == PlayerId) { paintedPosNr++; } });
-                var lastnotPaintedPos = Enumerable.Range(mePos[1], boardState.width).ToList().Where(posX => boardState.colors[mePos[0]][posX] != PlayerId);
-                if (lastnotPaintedPos != null && lastnotPaintedPos.Any())
+
+                int weight = 0;
+                var lastnotPaintedPos = new List<int>();
+                Enumerable.Range(mePos[1], boardState.width - mePos[1]).Reverse().ToList()
+                                                .ForEach(posX =>
+                                                    {
+                                                        if (IsPosOccupied(boardState, mePos[0], posX))
+                                                        { weight = 0; lastnotPaintedPos = new List<int>(); }
+                                                        else
+                                                        {
+                                                            if (boardState.colors[mePos[0]][posX] != PlayerId)
+                                                            { lastnotPaintedPos.Add(posX); weight += boardState.colors[mePos[0]][posX] == null ? 1 : 2; }
+                                                        }
+                                                    });
+                if (paintedPosNr != 0 && lastnotPaintedPos.Any())
                 {
-                    if (lastnotPaintedPos.First() - mePos[1] >= paintedPosNr)
+                    if (lastnotPaintedPos.First() - mePos[1] <= paintedPosNr)
                     {
-                        int weight = 0;
-                        Enumerable.Range(mePos[1],lastnotPaintedPos.First()).ToList().ForEach(posX => { if (boardState.colors[mePos[0]][posX] == null) weight++; else if (boardState.colors[mePos[0]][posX] != PlayerId) weight += 2; });
                         possiblePlays.Add(CreateWeightActionDirection(6, weight));//right
                     }
                 }
@@ -137,15 +158,25 @@ namespace mob_ai_csharp
             {
                 //get positions painted below me
                 int paintedPosNr = 0;
-                Enumerable.Range(mePos[0], boardState.height).ToList()
-                    .ForEach(posY => { if (boardState.colors[posY][mePos[0]] == PlayerId) { paintedPosNr++; } });
-                var lastnotPaintedPos = Enumerable.Range(0, mePos[0]).ToList().Where(posY => boardState.colors[posY][mePos[0]] != PlayerId);
-                if (lastnotPaintedPos != null && lastnotPaintedPos.Any())
+                Enumerable.Range(mePos[0], boardState.height - mePos[0]).ToList()
+                    .ForEach(posY => { if (boardState.colors[posY][mePos[1]] == PlayerId) { paintedPosNr++; } });
+
+                int weight = 0;
+                var lastnotPaintedPos = new List<int>();
+                Enumerable.Range(0, mePos[0]).ToList().ForEach(posY =>
+                                                        {
+                                                            if (IsPosOccupied(boardState, posY, mePos[1]))
+                                                            { weight = 0; lastnotPaintedPos = new List<int>(); }
+                                                            else
+                                                            {
+                                                                if (boardState.colors[posY][mePos[1]] != PlayerId)
+                                                                { lastnotPaintedPos.Add(posY); weight += boardState.colors[posY][mePos[1]] == null ? 1 : 2; }
+                                                            }
+                                                        });
+                if (paintedPosNr != 0 && lastnotPaintedPos.Any())
                 {
-                    if (mePos[0] - lastnotPaintedPos.First() >= paintedPosNr)
+                    if (mePos[0] - lastnotPaintedPos.First() <= paintedPosNr)
                     {
-                        int weight = 0;
-                        Enumerable.Range(lastnotPaintedPos.First(), mePos[0]).ToList().ForEach(posY => { if (boardState.colors[posY][mePos[0]] == null) weight++; else if (boardState.colors[posY][mePos[0]] != PlayerId) weight += 2; });
                         possiblePlays.Add(CreateWeightActionDirection(3, weight));//up
                     }
                 }
@@ -155,14 +186,25 @@ namespace mob_ai_csharp
                 int paintedPosNr = 0;
                 //positions above me
                 Enumerable.Range(0, mePos[0]).ToList()
-                    .ForEach(posY => { if (boardState.colors[posY][mePos[0]] == PlayerId) { paintedPosNr++; } });
-                var lastnotPaintedPos = Enumerable.Range(mePos[0], boardState.height).ToList().Where(posY => boardState.colors[posY][mePos[0]] != PlayerId);
-                if (lastnotPaintedPos != null && lastnotPaintedPos.Any())
+                    .ForEach(posY => { if (boardState.colors[posY][mePos[1]] == PlayerId) { paintedPosNr++; } });
+
+                int weight = 0;
+                var lastnotPaintedPos = new List<int>();
+                Enumerable.Range(mePos[0], boardState.height-mePos[0]).Reverse().ToList()
+                                                .ForEach(posY =>
+                                                {
+                                                    if (IsPosOccupied(boardState, posY, mePos[1]))
+                                                    { weight = 0; lastnotPaintedPos = new List<int>(); }
+                                                    else
+                                                    {
+                                                        if (boardState.colors[posY][mePos[1]] != PlayerId)
+                                                        { lastnotPaintedPos.Add(posY); weight += boardState.colors[posY][mePos[1]] == null ? 1 : 2; }
+                                                    }
+                                                });
+                if (paintedPosNr != 0 && lastnotPaintedPos.Any())
                 {
-                    if (lastnotPaintedPos.First() - mePos[0] >= paintedPosNr)
+                    if (lastnotPaintedPos.First() - mePos[0] <= paintedPosNr)
                     {
-                        int weight = 0;
-                        Enumerable.Range(mePos[0],lastnotPaintedPos.First()).ToList().ForEach(posY => { if (boardState.colors[posY][mePos[0]] == null) weight++; else if (boardState.colors[posY][mePos[0]] != PlayerId) weight += 2; });
                         possiblePlays.Add(CreateWeightActionDirection(4, weight));//down
                     }
                 }
