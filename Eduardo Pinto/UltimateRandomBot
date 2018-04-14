@@ -14,7 +14,9 @@ public class Bot implements multipaint.Bot {
     private int turns = -1;
     private int currentTurn = 0;
     private boolean isStuck;
+    private boolean stay = false;
     private int shootingFactor = 1;
+    private Map<String, int[]> paintedHistory;
 
 
     static String[] ActionTypes = new String[]{"shoot", "walk"};
@@ -28,24 +30,73 @@ public class Bot implements multipaint.Bot {
         this.playerId = playerId;
     }
 
+    private void init(Board state) {
+        if (turns == -1)
+            turns = state.turns_left;
+
+        if (positionHistory == null) {
+            positionHistory = new int[turns][2];
+            directionHistory = new int[turns][2];
+            typeHistory = new String[turns];
+            paintedHistory = new HashMap<>();
+            state.player_positions.entrySet().stream().forEach(
+                    entry -> paintedHistory.put(entry.getKey(), new int[turns]));
+            paintedHistory.put(null, new int[turns]);
+        }
+
+        height = state.height;
+        width = state.width;
+    }
+
+    boolean amIWinning() {
+        return paintedHistory.entrySet().stream()
+                .filter(entry -> entry.getKey() != null)
+                .map(entry -> new AbstractMap.SimpleEntry<>(entry.getKey(), entry.getValue()[currentTurn]))
+                .max(Map.Entry.comparingByValue())
+                .get()
+                .getKey()
+                .equals(playerId);
+    }
+
+    private void updatePaintedHistory(Board state) {
+        Map<String, Integer> points = new HashMap<>();
+        for (int i=0; i < height; i++) {
+            for (int j=0; j < width; j++) {
+                String color = state.colors[i][j];
+                points.put(color, 1 + points.getOrDefault(color, 0));
+            }
+        }
+
+        points.entrySet().stream().forEach(
+                entry -> {
+                    int[] hist = paintedHistory.get(entry.getKey());
+                    hist[currentTurn] = entry.getValue();
+                    paintedHistory.put(entry.getKey(), hist);
+                }
+        );
+    }
+
     public Action nextMove(Board state) {
-        System.err.println("\n\n#############################\nTurns left:" + state.turns_left);
 
         init(state);
 
         int[] currentPos = state.player_positions.get(playerId);
         positionHistory[currentTurn] = currentPos;
+        updatePaintedHistory(state);
+
+        System.err.println("\n\n##############\nTurns left:" + state.turns_left + " -- painted squares: " + paintedHistory.get(playerId)[currentTurn] + " -- free squares " + paintedHistory.get(null)[currentTurn]);
 
         if (currentTurn > 2) {
             isStuck = typeHistory[currentTurn-1].equals(typeHistory[currentTurn-2]) &&
                     posEquals(directionHistory[currentTurn-1], directionHistory[currentTurn-2]) &&
                     posEquals(positionHistory[currentTurn-1], positionHistory[currentTurn-2]);
-            if (isStuck)
-                System.err.println("$$$$$$$$$$$$$$FUCKING STUCK!!!!");
+
+            if (isStuck && amIWinning()) {
+                shootingFactor = 2;
+                System.err.println("$$$$$$$$$$$$$$ STUCK & WINNING!!!!");
+            }
         }
-
-        System.err.println("Current Pos: " + pointToString(positionHistory[currentTurn]));
-
+        
         Action a = new Action();
 
         int[][] points = classifyPosition(state, currentPos);
@@ -68,7 +119,7 @@ public class Bot implements multipaint.Bot {
             a.type = ActionTypes[0];
         }
 
-        if (walkPoints[indexes[7]] <= 0 && shootPoints[indexesShoot[7]] <= 0) {
+        if (walkPoints[indexes[7]] <= 0 && shootPoints[indexesShoot[7]] <= 0 && !stay) {
             a.type = ActionTypes[1];
             String closestOpponent = findClosestOpponent(state.player_positions);
             a.direction = moveCloserToOpponent(closestOpponent, state.player_positions.get(closestOpponent), currentPos);
@@ -81,20 +132,6 @@ public class Bot implements multipaint.Bot {
         directionHistory[currentTurn] = a.direction;
         currentTurn++;
         return a;
-    }
-
-    private void init(Board state) {
-        if (turns == -1)
-            turns = state.turns_left;
-
-        if (positionHistory == null) {
-            positionHistory = new int[turns][2];
-            directionHistory = new int[turns][2];
-            typeHistory = new String[turns];
-        }
-
-        height = state.height;
-        width = state.width;
     }
 
     private int[][] classifyPosition(Board state, int[] currentPos) {
@@ -135,8 +172,7 @@ public class Bot implements multipaint.Bot {
 
     private int classifyShoot(int[] actionDir, int[] currentPos, String[][] colors, Map<String, int[]> players) {
         if (isStuck && posEquals(currentPos, positionHistory[currentTurn-1]) &&
-                posEquals(actionDir, directionHistory[currentTurn-1]) &&
-                typeHistory[currentTurn-1].equals("shoot")) // fixme avoid getting stuck
+                posEquals(actionDir, directionHistory[currentTurn-1]))
             return -5;
 
         int points = 0;
@@ -193,9 +229,9 @@ public class Bot implements multipaint.Bot {
     private int classifyWalk(int[] dir, int[] nextPos, String[][] colors, Map<String, int[]> players) {
         int[] currentPos = new int[]{nextPos[0] - dir[0], nextPos[1] - dir[1]};
         if (isStuck && posEquals(currentPos, positionHistory[currentTurn-1]) &&
-                posEquals(dir, directionHistory[currentTurn-1]) &&
-                typeHistory[currentTurn-1].equals("walk")) // fixme avoid getting stuck
+                posEquals(dir, directionHistory[currentTurn-1])) {
             return -5;
+        }
 
         int points = 0;
 
