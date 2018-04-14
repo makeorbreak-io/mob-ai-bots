@@ -207,8 +207,13 @@ namespace mob_ai_csharp
             {
                 var possibleMovePoint = ExecuteWalkMove(move.Direction, modifiablePosition);
 
-                if (!OutOfBounds(possibleMovePoint, board) && possibleMovePoint != guysPoint)
+                if (!OutOfBounds(possibleMovePoint, board))
                 {
+                    if (possibleMovePoint == guysPoint)
+                    {
+                        cellCount -= 10;
+                    }
+
                     if (board.colors[possibleMovePoint.Y][possibleMovePoint.X] != PlayerId)
                     {
                         cellCount++;
